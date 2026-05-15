@@ -24,6 +24,8 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" options={{ title: "" }} />
         <Stack.Screen name="feedback" options={{ title: "意见反馈" }} />
         <Stack.Screen name="schedule" options={{ title: "赛程详情" }} />
+        <Stack.Screen name="login" options={{ title: "管理员登录" }} />
+        <Stack.Screen name="manage" options={{ title: "内容管理" }} />
       </Stack>
       <Toast />
     </Provider>

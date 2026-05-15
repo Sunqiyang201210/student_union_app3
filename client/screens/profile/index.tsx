@@ -2,6 +2,8 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import { Screen } from '@/components/Screen';
 import { Link } from 'expo-router';
 import { FontAwesome6 } from '@expo/vector-icons';
+import { useAuth } from '@/contexts/AuthContext';
+import { useSafeRouter } from '@/hooks/useSafeRouter';
 
 const MenuItem = ({ 
   icon, 
@@ -33,6 +35,14 @@ const MenuItem = ({
 );
 
 export default function ProfileScreen() {
+  const { isAuthenticated, user, logout } = useAuth();
+  const router = useSafeRouter();
+
+  const handleLogout = () => {
+    logout();
+    router.replace('/');
+  };
+
   return (
     <Screen>
       <ScrollView 
@@ -43,11 +53,34 @@ export default function ProfileScreen() {
         {/* User Header */}
         <View style={styles.userHeader}>
           <View style={styles.avatarContainer}>
-            <FontAwesome6 name="user-graduate" size={40} color="#6C63FF" />
+            {isAuthenticated ? (
+              <FontAwesome6 name="user-shield" size={40} color="#6C63FF" />
+            ) : (
+              <FontAwesome6 name="user-graduate" size={40} color="#6C63FF" />
+            )}
           </View>
-          <Text style={styles.userName}>学生用户</Text>
-          <Text style={styles.userRole}>学生会成员</Text>
+          <Text style={styles.userName}>{isAuthenticated ? user?.username : '学生用户'}</Text>
+          <Text style={styles.userRole}>{isAuthenticated ? '管理员' : '学生会成员'}</Text>
         </View>
+
+        {/* Admin Section - Only show when logged in */}
+        {isAuthenticated && (
+          <View style={styles.adminSection}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>管理功能</Text>
+            </View>
+
+            <View style={styles.menuSection}>
+              <MenuItem
+                icon="cog"
+                title="内容管理"
+                subtitle="发布和编辑通知、活动、赛程"
+                color="#6C63FF"
+                href="/(tabs)/manage"
+              />
+            </View>
+          </View>
+        )}
 
         {/* Stats Row */}
         <View style={styles.statsRow}>
@@ -94,6 +127,23 @@ export default function ProfileScreen() {
             color="#FDCB6E"
             href="/feedback"
           />
+        </View>
+
+        {/* Auth Button */}
+        <View style={styles.authSection}>
+          {isAuthenticated ? (
+            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+              <FontAwesome6 name="sign-out-alt" size={18} color="#FF6B6B" />
+              <Text style={styles.logoutButtonText}>退出登录</Text>
+            </TouchableOpacity>
+          ) : (
+            <Link href="/login" asChild>
+              <TouchableOpacity style={styles.loginButton}>
+                <FontAwesome6 name="sign-in-alt" size={18} color="#FFFFFF" />
+                <Text style={styles.loginButtonText}>管理员登录</Text>
+              </TouchableOpacity>
+            </Link>
+          )}
         </View>
 
         {/* About Section */}
@@ -148,83 +198,55 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   userRole: {
-    fontSize: 14,
-    color: '#636E72',
-  },
-  statsRow: {
-    backgroundColor: '#F0F0F3',
-    borderRadius: 24,
-    padding: 20,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 24,
-    shadowColor: '#D1D9E6',
-    shadowOffset: { width: 6, height: 6 },
-    shadowOpacity: 0.7,
-    shadowRadius: 8,
-    elevation: 6,
-    borderWidth: 0.5,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statNumber: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#6C63FF',
-    marginBottom: 4,
-  },
-  statLabel: {
     fontSize: 13,
     color: '#636E72',
   },
-  statDivider: {
-    width: 1,
-    height: 40,
-    backgroundColor: '#E8E8EB',
+  adminSection: {
+    marginBottom: 8,
   },
   sectionHeader: {
-    marginTop: 8,
     marginBottom: 12,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#2D3436',
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#636E72',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   menuSection: {
     backgroundColor: '#F0F0F3',
-    borderRadius: 24,
-    overflow: 'hidden',
+    borderRadius: 16,
+    marginBottom: 20,
     shadowColor: '#D1D9E6',
-    shadowOffset: { width: 6, height: 6 },
-    shadowOpacity: 0.7,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 0.6,
+    shadowRadius: 6,
+    elevation: 4,
     borderWidth: 0.5,
     borderColor: 'rgba(255, 255, 255, 0.5)',
-    marginBottom: 24,
+    overflow: 'hidden',
   },
   menuItemOuter: {
-    borderBottomWidth: 0.5,
-    borderBottomColor: 'rgba(255, 255, 255, 0.5)',
+    backgroundColor: '#F0F0F3',
   },
   menuItemInner: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
   },
   iconContainer: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 14,
   },
   textContainer: {
     flex: 1,
-    marginLeft: 12,
   },
   menuTitle: {
     fontSize: 15,
@@ -236,15 +258,84 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#636E72',
   },
-  aboutCard: {
+  statsRow: {
+    flexDirection: 'row',
     backgroundColor: '#F0F0F3',
-    borderRadius: 24,
-    padding: 16,
+    borderRadius: 16,
+    paddingVertical: 20,
+    marginBottom: 20,
     shadowColor: '#D1D9E6',
-    shadowOffset: { width: 6, height: 6 },
-    shadowOpacity: 0.7,
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 0.6,
+    shadowRadius: 6,
+    elevation: 4,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statNumber: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#6C63FF',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#636E72',
+  },
+  statDivider: {
+    width: 1,
+    backgroundColor: '#E8E8EB',
+    marginVertical: 4,
+  },
+  authSection: {
+    marginBottom: 20,
+  },
+  loginButton: {
+    backgroundColor: '#6C63FF',
+    borderRadius: 12,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    shadowColor: '#6C63FF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 6,
+  },
+  loginButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  logoutButton: {
+    backgroundColor: 'rgba(255, 107, 107, 0.12)',
+    borderRadius: 12,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  logoutButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FF6B6B',
+  },
+  aboutCard: {
+    backgroundColor: '#F0F0F3',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#D1D9E6',
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 0.6,
+    shadowRadius: 6,
+    elevation: 4,
     borderWidth: 0.5,
     borderColor: 'rgba(255, 255, 255, 0.5)',
   },
@@ -252,7 +343,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 8,
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
   },
   aboutLabel: {
     fontSize: 14,
@@ -260,6 +353,7 @@ const styles = StyleSheet.create({
   },
   aboutValue: {
     fontSize: 14,
+    fontWeight: '600',
     color: '#2D3436',
   },
 });
