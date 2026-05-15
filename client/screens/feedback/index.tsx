@@ -30,19 +30,21 @@ export default function FeedbackScreen() {
 
     setSubmitting(true);
     try {
-      // 提交到云端链接
-      const cloudUrl = 'https://3m2srsmnzb.coze.site/department/feedback';
-      const response = await fetch(cloudUrl, {
+      // 通过后端API代理提交到云端
+      const API_BASE = process.env.EXPO_PUBLIC_BACKEND_BASE_URL || 'http://localhost:9091';
+      const response = await fetch(`${API_BASE}/api/v1/feedbacks`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          '提交人': contact.trim() || '匿名用户',
-          '内容': content.trim(),
-          '详细内容': `${selectedType === 'suggestion' ? '建议' : selectedType === 'complaint' ? '投诉' : selectedType === 'question' ? '咨询' : '其他'}: ${content.trim()}`,
+          content: content.trim(),
+          contact: contact.trim() || '匿名用户',
+          type: selectedType,
         }),
       });
+      
+      const result = await response.json();
       
       if (response.ok) {
         Toast.show({
@@ -59,10 +61,11 @@ export default function FeedbackScreen() {
         Toast.show({
           type: 'error',
           text1: '提交失败',
-          text2: '请稍后重试',
+          text2: result.message || '请稍后重试',
         });
       }
     } catch (e) {
+      console.error('Feedback error:', e);
       Toast.show({
         type: 'error',
         text1: '网络错误',
