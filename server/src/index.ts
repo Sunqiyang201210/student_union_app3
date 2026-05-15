@@ -1,18 +1,23 @@
-import express, { Router } from "express";
+import express from "express";
 import cors from "cors";
 import crypto from "crypto";
 
 const app = express();
 const port = process.env.PORT || 9091;
 
-// 简单的密钥用于JWT签名
-const JWT_SECRET = process.env.JWT_SECRET || 'student-union-secret-key-2024';
+// 管理员账户
+const ADMIN_USER = {
+  username: 'admin',
+  passwordHash: '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9',
+  name: '管理员',
+  role: 'admin'
+};
 
-// 内存数据存储
+// 内存数据存储（支持实时增删改查）
 let notifications = [
-  { id: 1, title: '关于举办2024年度学生代表大会的通知', content: '学校定于12月15日在学术报告厅举办2024年度学生代表大会，请各学院代表准时参加。', type: 'meeting', priority: 'high', published_at: new Date().toISOString() },
-  { id: 2, title: '学生会招新面试安排', content: '本周三至周五将进行学生会各部门招新面试，请已报名同学提前做好准备。', type: 'recruit', priority: 'normal', published_at: new Date(Date.now() - 86400000).toISOString() },
-  { id: 3, title: '校园文明倡议书', content: '为营造良好的校园环境，学生会向全体同学发出文明倡议。', type: 'notice', priority: 'normal', published_at: new Date(Date.now() - 172800000).toISOString() },
+  { id: 1, title: '关于举办2024年度学生代表大会的通知', content: '学校定于12月15日在学术报告厅举办2024年度学生代表大会，请各学院代表准时参加。届时将进行学生会年度工作报告及换届选举。', type: 'meeting', priority: 'high', published_at: new Date().toISOString() },
+  { id: 2, title: '学生会招新面试安排', content: '本周三至周五将进行学生会各部门招新面试，请已报名同学提前做好准备，具体时间地点将通过短信通知。', type: 'recruit', priority: 'normal', published_at: new Date(Date.now() - 86400000).toISOString() },
+  { id: 3, title: '校园文明倡议书', content: '为营造良好的校园环境，学生会向全体同学发出文明倡议：文明出行、礼貌待人、爱护公物、维护卫生。', type: 'notice', priority: 'normal', published_at: new Date(Date.now() - 172800000).toISOString() },
   { id: 4, title: '关于冬至包饺子活动的通知', content: '本周六下午3点在食堂三楼举办冬至包饺子活动，欢迎同学们踊跃参加！', type: 'activity', priority: 'high', published_at: new Date(Date.now() - 259200000).toISOString() },
 ];
 
@@ -36,16 +41,12 @@ let matches = [
   { id: 10, league: '校篮球联赛', home_team: '经济管理学院', away_team: '电气工程学院', home_score: null, away_score: null, match_time: '2024-12-20 18:00:00', venue: '体育馆A馆', status: 'scheduled' },
 ];
 
-const feedbacks: Array<{ id: number; content: string; contact: string | null; type: string; status: string; created_at: string }> = [];
+let feedbacks: Array<{ id: number; content: string; contact: string | null; type: string; status: string; created_at: string }> = [];
 
-// 管理员账户（实际项目中应存入数据库并加密）
-const ADMIN_USER = {
-  username: 'admin',
-  // 密码: admin123 (SHA256加密)
-  passwordHash: '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9',
-  name: '管理员',
-  role: 'admin'
-};
+let nextNotificationId = 5;
+let nextActivityId = 5;
+let nextMatchId = 11;
+let nextFeedbackId = 1;
 
 // 生成简单token
 function generateToken(username: string): string {
@@ -64,7 +65,7 @@ function verifyToken(token: string): { username: string; exp: number } | null {
   }
 }
 
-// 简单认证中间件
+// 认证中间件
 function authMiddleware(req: any, res: any, next: Function) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -84,9 +85,13 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+// 健康检查
+app.get('/api/v1/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 // ==================== 认证 API ====================
 
-// 登录
 app.post('/api/v1/auth/login', (req, res) => {
   try {
     const { username, password } = req.body;
@@ -95,7 +100,6 @@ app.post('/api/v1/auth/login', (req, res) => {
       return res.status(400).json({ code: 400, message: '用户名和密码不能为空' });
     }
     
-    // 验证密码
     const passwordHash = crypto.createHash('sha256').update(password).digest('hex');
     
     if (username === ADMIN_USER.username && passwordHash === ADMIN_USER.passwordHash) {
@@ -116,7 +120,6 @@ app.post('/api/v1/auth/login', (req, res) => {
   }
 });
 
-// 获取当前用户
 app.get('/api/v1/auth/me', authMiddleware, (req: any, res) => {
   res.json({ 
     code: 0, 
@@ -127,7 +130,6 @@ app.get('/api/v1/auth/me', authMiddleware, (req: any, res) => {
 
 // ==================== 通知管理 API ====================
 
-// 获取通知列表（公开）
 app.get('/api/v1/notifications', (req, res) => {
   try {
     const sorted = [...notifications].sort((a, b) => 
@@ -139,7 +141,6 @@ app.get('/api/v1/notifications', (req, res) => {
   }
 });
 
-// 创建通知（需认证）
 app.post('/api/v1/notifications', authMiddleware, (req: any, res) => {
   try {
     const { title, content, type, priority } = req.body;
@@ -149,7 +150,7 @@ app.post('/api/v1/notifications', authMiddleware, (req: any, res) => {
     }
     
     const newNotification = {
-      id: notifications.length > 0 ? Math.max(...notifications.map(n => n.id)) + 1 : 1,
+      id: nextNotificationId++,
       title,
       content,
       type: type || 'notice',
@@ -164,7 +165,6 @@ app.post('/api/v1/notifications', authMiddleware, (req: any, res) => {
   }
 });
 
-// 更新通知（需认证）
 app.put('/api/v1/notifications/:id', authMiddleware, (req: any, res) => {
   try {
     const { id } = req.params;
@@ -189,7 +189,6 @@ app.put('/api/v1/notifications/:id', authMiddleware, (req: any, res) => {
   }
 });
 
-// 删除通知（需认证）
 app.delete('/api/v1/notifications/:id', authMiddleware, (req: any, res) => {
   try {
     const { id } = req.params;
@@ -249,7 +248,7 @@ app.post('/api/v1/activities', authMiddleware, (req: any, res) => {
     }
     
     const newActivity = {
-      id: activities.length > 0 ? Math.max(...activities.map(a => a.id)) + 1 : 1,
+      id: nextActivityId++,
       title,
       description: description || '',
       location: location || '',
@@ -347,11 +346,11 @@ app.post('/api/v1/matches', authMiddleware, (req: any, res) => {
     const { league, home_team, away_team, match_time, venue } = req.body;
     
     if (!league || !home_team || !away_team || !match_time) {
-      return res.status(400).json({ code: 400, message: '联赛、主队、客队和比赛时间不能为空' });
+      return res.status(400).json({ code: 400, message: '请填写完整信息' });
     }
     
     const newMatch = {
-      id: matches.length > 0 ? Math.max(...matches.map(m => m.id)) + 1 : 1,
+      id: nextMatchId++,
       league,
       home_team,
       away_team,
@@ -372,7 +371,7 @@ app.post('/api/v1/matches', authMiddleware, (req: any, res) => {
 app.put('/api/v1/matches/:id', authMiddleware, (req: any, res) => {
   try {
     const { id } = req.params;
-    const { home_score, away_score, status, match_time, venue } = req.body;
+    const { league, home_team, away_team, match_time, venue, home_score, away_score, status } = req.body;
     
     const index = matches.findIndex(m => m.id === parseInt(id));
     if (index === -1) {
@@ -381,11 +380,14 @@ app.put('/api/v1/matches/:id', authMiddleware, (req: any, res) => {
     
     matches[index] = {
       ...matches[index],
+      league: league ?? matches[index].league,
+      home_team: home_team ?? matches[index].home_team,
+      away_team: away_team ?? matches[index].away_team,
+      match_time: match_time ?? matches[index].match_time,
+      venue: venue ?? matches[index].venue,
       home_score: home_score ?? matches[index].home_score,
       away_score: away_score ?? matches[index].away_score,
       status: status ?? matches[index].status,
-      match_time: match_time ?? matches[index].match_time,
-      venue: venue ?? matches[index].venue,
     };
     
     res.json({ code: 0, data: matches[index], message: '更新成功' });
@@ -410,9 +412,9 @@ app.delete('/api/v1/matches/:id', authMiddleware, (req: any, res) => {
   }
 });
 
-// ==================== 反馈管理 API ====================
+// ==================== 反馈意见 API ====================
 
-app.get('/api/v1/feedbacks', (req, res) => {
+app.get('/api/v1/feedbacks', authMiddleware, (req, res) => {
   try {
     const sorted = [...feedbacks].sort((a, b) => 
       new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -432,7 +434,7 @@ app.post('/api/v1/feedbacks', (req, res) => {
     }
     
     const newFeedback = {
-      id: feedbacks.length + 1,
+      id: nextFeedbackId++,
       content,
       contact: contact || null,
       type: type || 'suggestion',
@@ -447,14 +449,9 @@ app.post('/api/v1/feedbacks', (req, res) => {
   }
 });
 
-// ==================== 健康检查 ====================
-
-app.get('/api/v1/health', (req, res) => {
-  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
-});
-
+// Start server
 app.listen(port, () => {
-  console.log(`Server listening at http://localhost:${port}/`);
+  console.log(`Server running on port ${port}`);
 });
 
 export default app;

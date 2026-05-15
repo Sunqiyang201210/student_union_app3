@@ -13,12 +13,11 @@
     "cors": "^2.8.5",
     "coze-coding-dev-sdk": "^0.7.21",
     "dayjs": "^1.11.20",
-    "dotenv": "^17.2.3",
+    "dotenv": "^17.2.4",
     "drizzle-orm": "^0.45.1",
     "drizzle-zod": "^0.8.3",
     "express": "^4.22.1",
     "multer": "^2.0.2",
-    "pg": "^8.16.3",
     "zod": "^4.2.1"
   },
   "devDependencies": {

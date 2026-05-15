@@ -84,17 +84,6 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Banner */}
-        <View style={styles.banner}>
-          <View style={styles.bannerContent}>
-            <Text style={styles.bannerTitle}>学生会公告</Text>
-            <Text style={styles.bannerText}>点击查看最新通知和活动</Text>
-          </View>
-          <View style={styles.bannerIcon}>
-            <FontAwesome6 name="bell" size={40} color="#FFFFFF" />
-          </View>
-        </View>
-
         {/* Menu Section */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>快捷服务</Text>
@@ -188,35 +177,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(108, 99, 255, 0.12)',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  banner: {
-    backgroundColor: '#6C63FF',
-    borderRadius: 24,
-    padding: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 24,
-    overflow: 'hidden',
-  },
-  bannerContent: {
-    flex: 1,
-  },
-  bannerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 6,
-  },
-  bannerText: {
-    fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.8)',
-  },
-  bannerIcon: {
-    width: 80,
-    height: 80,
-    justifyContent: 'center',
-    alignItems: 'center',
-    opacity: 0.3,
   },
   sectionHeader: {
     flexDirection: 'row',
