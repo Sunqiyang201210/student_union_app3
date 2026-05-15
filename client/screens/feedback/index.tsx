@@ -119,8 +119,11 @@ export default function FeedbackScreen() {
         >
           {/* Header */}
           <View style={styles.header}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+              <FontAwesome6 name="arrow-left" size={20} color="#6C63FF" />
+            </TouchableOpacity>
             <Text style={styles.headerTitle}>意见反馈</Text>
-            <Text style={styles.headerSubtitle}>您的意见是我们前进的动力</Text>
+            <View style={styles.backButton} />
           </View>
 
           {/* Feedback Type */}
@@ -206,10 +209,19 @@ const styles = StyleSheet.create({
     paddingBottom: 120,
   },
   header: {
-    marginBottom: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 26,
+    fontSize: 20,
     fontWeight: '800',
     color: '#2D3436',
   },
