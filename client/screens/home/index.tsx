@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
 import { Screen } from '@/components/Screen';
 import { Link } from 'expo-router';
 import { FontAwesome6 } from '@expo/vector-icons';
+import { useFocusEffect } from 'expo-router';
 
 interface NoticeCount {
   notification: number;
@@ -45,26 +46,28 @@ function MenuCard({ icon, title, subtitle, color, href, badge }: MenuCardProps) 
 export default function HomeScreen() {
   const [counts, setCounts] = useState<NoticeCount>({ notification: 0, activity: 0 });
 
-  useEffect(() => {
-    const fetchCounts = async () => {
-      try {
-        const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL;
-        const [notifRes, actRes] = await Promise.all([
-          fetch(`${baseUrl}/api/v1/notifications`),
-          fetch(`${baseUrl}/api/v1/activities`),
-        ]);
-        const notifData = await notifRes.json();
-        const actData = await actRes.json();
-        setCounts({
-          notification: notifData.data?.length || 0,
-          activity: actData.data?.length || 0,
-        });
-      } catch (e) {
-        console.log('Fetch counts failed:', e);
-      }
-    };
-    fetchCounts();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      const fetchCounts = async () => {
+        try {
+          const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL;
+          const [notifRes, actRes] = await Promise.all([
+            fetch(`${baseUrl}/api/v1/notifications`),
+            fetch(`${baseUrl}/api/v1/activities`),
+          ]);
+          const notifData = await notifRes.json();
+          const actData = await actRes.json();
+          setCounts({
+            notification: notifData.data?.length || 0,
+            activity: actData.data?.length || 0,
+          });
+        } catch (e) {
+          console.log('Fetch counts failed:', e);
+        }
+      };
+      fetchCounts();
+    }, [])
+  );
 
   return (
     <Screen>

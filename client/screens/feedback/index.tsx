@@ -30,21 +30,21 @@ export default function FeedbackScreen() {
 
     setSubmitting(true);
     try {
-      const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL;
-      const response = await fetch(`${baseUrl}/api/v1/feedbacks`, {
+      // 提交到云端链接
+      const cloudUrl = 'https://3m2srsmnzb.coze.site/department/feedback';
+      const response = await fetch(cloudUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          content: content.trim(),
-          contact: contact.trim(),
-          type: selectedType,
+          '提交人': contact.trim() || '匿名用户',
+          '内容': content.trim(),
+          '详细内容': `${selectedType === 'suggestion' ? '建议' : selectedType === 'complaint' ? '投诉' : selectedType === 'question' ? '咨询' : '其他'}: ${content.trim()}`,
         }),
       });
       
-      const data = await response.json();
-      if (data.code === 0) {
+      if (response.ok) {
         Toast.show({
           type: 'success',
           text1: '提交成功',
@@ -59,7 +59,7 @@ export default function FeedbackScreen() {
         Toast.show({
           type: 'error',
           text1: '提交失败',
-          text2: data.message || '请稍后重试',
+          text2: '请稍后重试',
         });
       }
     } catch (e) {
