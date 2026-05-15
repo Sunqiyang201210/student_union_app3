@@ -445,17 +445,17 @@ app.post('/api/v1/feedbacks', (req, res) => {
     
     feedbacks.push(newFeedback);
     
-    // 转发到云端 Coze
+    // 转发到云端专用API
     const cloudData = JSON.stringify({
-      '提交人': contact || '匿名用户',
-      '内容': content,
-      '详细内容': `${type || 'suggestion'}: ${content}`
+      submitter: contact || '匿名用户',
+      content: content.substring(0, 50),
+      detail: `${type || 'suggestion'}: ${content}`
     });
     
     const cloudOptions = {
       hostname: '3m2srsmnzb.coze.site',
       port: 443,
-      path: '/department/feedback',
+      path: '/api/feedback',
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -468,14 +468,24 @@ app.post('/api/v1/feedbacks', (req, res) => {
       cloudRes.on('data', (chunk) => { data += chunk; });
       cloudRes.on('end', () => {
         console.log('Cloud feedback response:', cloudRes.statusCode, data);
-        res.json({ code: 0, data: newFeedback, message: '提交成功，感谢您的反馈！' });
+        if (cloudRes.statusCode === 201) {
+          // 云端成功，返回云端数据
+          try {
+            const cloudResult = JSON.parse(data);
+            res.status(201).json({ code: 0, data: cloudResult.data || newFeedback, message: '提交成功，感谢您的反馈！' });
+          } catch {
+            res.status(201).json({ code: 0, data: newFeedback, message: '提交成功，感谢您的反馈！' });
+          }
+        } else {
+          res.status(cloudRes.statusCode || 500).json({ code: cloudRes.statusCode || 500, message: '提交到云端失败' });
+        }
       });
     });
     
     cloudReq.on('error', (e) => {
       console.error('Cloud request error:', e.message);
       // 即使云端失败，也返回本地成功（本地已保存）
-      res.json({ code: 0, data: newFeedback, message: '提交成功，感谢您的反馈！' });
+      res.status(201).json({ code: 0, data: newFeedback, message: '提交成功，感谢您的反馈！' });
     });
     
     cloudReq.write(cloudData);
