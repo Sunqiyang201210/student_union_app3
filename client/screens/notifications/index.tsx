@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
+'use client';
+
+import { useState, useCallback } from 'react';
 import { Screen } from '@/components/Screen';
+import { Card, Text, View, Badge } from '@/components/ui';
 import { useFocusEffect } from 'expo-router';
-import { FontAwesome6 } from '@expo/vector-icons';
+import { api, initStorage } from '@/utils/storage';
 
 interface Notification {
   id: number;
@@ -13,240 +15,106 @@ interface Notification {
   published_at: string;
 }
 
-const getTypeIcon = (type: string) => {
-  switch (type) {
-    case 'meeting': return 'users';
-    case 'recruit': return 'user-plus';
-    case 'activity': return 'calendar-star';
-    default: return 'bell';
-  }
-};
-
-const getTypeColor = (type: string) => {
-  switch (type) {
-    case 'meeting': return '#6C63FF';
-    case 'recruit': return '#00B894';
-    case 'activity': return '#FF6584';
-    default: return '#6C63FF';
-  }
-};
-
-const getPriorityBadge = (priority: string) => {
-  if (priority === 'high') {
-    return { text: '重要', color: '#FF6B6B', bg: 'rgba(255, 107, 107, 0.12)' };
-  }
-  return null;
-};
-
 export default function NotificationsScreen() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
 
-  const fetchNotifications = async (retries = 3) => {
+  const fetchNotifications = useCallback(async () => {
     try {
-      const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL || 'http://localhost:9091';
-      const response = await fetch(`${baseUrl}/api/v1/notifications`, {
-        signal: AbortSignal.timeout(5000),
-      });
-      
-      if (!response.ok) throw new Error('Network response not ok');
-      
-      const data = await response.json();
-      if (data.code === 0) {
-        setNotifications(Array.isArray(data.data) ? data.data : []);
+      const response = await api.getNotifications();
+      if (response.code === 0) {
+        setNotifications(response.data);
       }
-    } catch (e) {
-      if (retries > 0) {
-        await new Promise(r => setTimeout(r, 500));
-        return fetchNotifications(retries - 1);
-      }
-      console.log('Failed to fetch notifications after retries');
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error);
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
-  };
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
+      initStorage();
       fetchNotifications();
-    }, [])
+    }, [fetchNotifications])
   );
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    fetchNotifications();
+  const getTypeLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      meeting: '会议',
+      recruit: '招募',
+      notice: '通知',
+      activity: '活动',
+    };
+    return labels[type] || '通知';
   };
 
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    
-    if (days === 0) return '今天';
-    if (days === 1) return '昨天';
-    if (days < 7) return `${days}天前`;
-    return `${date.getMonth() + 1}/${date.getDate()}`;
+  const getTypeColor = (type: string) => {
+    const colors: Record<string, string> = {
+      meeting: 'bg-blue-100 text-blue-700',
+      recruit: 'bg-green-100 text-green-700',
+      notice: 'bg-gray-100 text-gray-700',
+      activity: 'bg-orange-100 text-orange-700',
+    };
+    return colors[type] || 'bg-gray-100 text-gray-700';
   };
 
-  const NoticeCard = ({ item }: { item: Notification }) => {
-    const priorityBadge = getPriorityBadge(item.priority);
-    const iconColor = getTypeColor(item.type);
-    
-    return (
-      <View style={styles.cardOuter}>
-        <View style={styles.cardInner}>
-          <View style={[styles.iconContainer, { backgroundColor: `${iconColor}1A` }]}>
-            <FontAwesome6 name={getTypeIcon(item.type) as any} size={22} color={iconColor} />
-          </View>
-          <View style={styles.cardContentContainer}>
-            <View style={styles.titleRow}>
-              <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
-              {priorityBadge && (
-                <View style={[styles.priorityBadge, { backgroundColor: priorityBadge.bg }]}>
-                  <Text style={[styles.priorityText, { color: priorityBadge.color }]}>
-                    {priorityBadge.text}
-                  </Text>
-                </View>
-              )}
-            </View>
-            <Text style={styles.cardContent} numberOfLines={2}>{item.content}</Text>
-            <Text style={styles.cardDate}>{formatDate(item.published_at)}</Text>
-          </View>
-        </View>
-      </View>
-    );
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return `${date.getMonth() + 1}月${date.getDate()}日`;
   };
 
   return (
     <Screen>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>学生会通知</Text>
-        <Text style={styles.headerSubtitle}>共 {notifications.length} 条通知</Text>
+      <View className="flex-1 bg-gray-50">
+        {/* 顶部标题 */}
+        <View className="bg-white px-5 pt-12 pb-4 border-b border-gray-100">
+          <Text className="text-gray-900 text-xl font-bold">学生会通知</Text>
+          <Text className="text-gray-400 text-sm mt-0.5">
+            {loading ? '加载中...' : `共 ${notifications.length} 条通知`}
+          </Text>
+        </View>
+
+        {/* 通知列表 */}
+        <View className="flex-1 px-4 py-4">
+          {loading ? (
+            <View className="flex-1 items-center justify-center">
+              <Text className="text-gray-400">加载中...</Text>
+            </View>
+          ) : notifications.length === 0 ? (
+            <View className="flex-1 items-center justify-center">
+              <Text className="text-gray-400">暂无通知</Text>
+            </View>
+          ) : (
+            notifications.map((item, index) => (
+              <Card
+                key={item.id}
+                className={`mb-3 bg-white rounded-2xl p-4 shadow-sm border border-gray-100 ${
+                  item.priority === 'high' ? 'border-l-4 border-l-red-500' : ''
+                }`}
+              >
+                <View className="flex-row justify-between items-start mb-2">
+                  <Text className="text-gray-800 font-medium text-base flex-1 pr-2" numberOfLines={2}>
+                    {item.title}
+                  </Text>
+                  <Badge className={`px-2 py-0.5 rounded text-xs ${getTypeColor(item.type)}`}>
+                    {getTypeLabel(item.type)}
+                  </Badge>
+                </View>
+                <Text className="text-gray-500 text-sm leading-relaxed" numberOfLines={2}>
+                  {item.content}
+                </Text>
+                <Text className="text-gray-400 text-xs mt-2">
+                  {formatDate(item.published_at)}
+                  {item.priority === 'high' && (
+                    <Text className="text-red-500 ml-2">重要</Text>
+                  )}
+                </Text>
+              </Card>
+            ))
+          )}
+        </View>
       </View>
-      <ScrollView 
-        style={styles.container} 
-        contentContainerStyle={styles.contentContainer}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#6C63FF']} />
-        }
-      >
-        {loading ? (
-          <View style={styles.emptyContainer}>
-            <FontAwesome6 name="spinner" size={32} color="#B2BEC3" />
-            <Text style={styles.emptyText}>加载中...</Text>
-          </View>
-        ) : notifications.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <FontAwesome6 name="bell-slash" size={48} color="#B2BEC3" />
-            <Text style={styles.emptyText}>暂无通知</Text>
-          </View>
-        ) : (
-          notifications.map((item) => (
-            <NoticeCard key={item.id} item={item} />
-          ))
-        )}
-        <View style={{ height: 120 }} />
-      </ScrollView>
     </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F0F0F3',
-  },
-  contentContainer: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 120,
-  },
-  header: {
-    backgroundColor: '#F0F0F3',
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 12,
-  },
-  headerTitle: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#2D3436',
-  },
-  headerSubtitle: {
-    fontSize: 13,
-    color: '#636E72',
-    marginTop: 4,
-  },
-  cardOuter: {
-    marginBottom: 16,
-  },
-  cardInner: {
-    backgroundColor: '#F0F0F3',
-    borderRadius: 24,
-    padding: 20,
-    flexDirection: 'row',
-    shadowColor: '#D1D9E6',
-    shadowOffset: { width: 6, height: 6 },
-    shadowOpacity: 0.7,
-    shadowRadius: 8,
-    elevation: 6,
-    borderWidth: 0.5,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
-  },
-  iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  cardContentContainer: {
-    flex: 1,
-    marginLeft: 14,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#2D3436',
-    flex: 1,
-  },
-  priorityBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 10,
-    marginLeft: 8,
-  },
-  priorityText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  cardContent: {
-    fontSize: 13,
-    color: '#636E72',
-    lineHeight: 20,
-    marginBottom: 8,
-  },
-  cardDate: {
-    fontSize: 12,
-    color: '#B2BEC3',
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: '#B2BEC3',
-    marginTop: 12,
-  },
-});

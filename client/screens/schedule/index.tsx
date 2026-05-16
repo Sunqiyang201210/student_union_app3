@@ -1,378 +1,185 @@
+'use client';
+
 import { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
 import { Screen } from '@/components/Screen';
+import { Card, Text, View, Badge, Button } from '@/components/ui';
 import { useFocusEffect } from 'expo-router';
-import { useSafeSearchParams } from '@/hooks/useSafeRouter';
-import { FontAwesome6 } from '@expo/vector-icons';
+import { api, initStorage } from '@/utils/storage';
 
 interface Match {
   id: number;
   league: string;
   home_team: string;
   away_team: string;
-  home_score: number | null;
-  away_score: number | null;
+  home_score?: number;
+  away_score?: number;
   match_time: string;
   venue: string;
   status: string;
 }
 
+type LeagueFilter = '全部' | '足球联赛' | '篮球联赛';
+
 export default function ScheduleScreen() {
-  const { league } = useSafeSearchParams<{ league?: string }>();
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [selectedLeague, setSelectedLeague] = useState(league || '校足球联赛');
+  const [activeFilter, setActiveFilter] = useState<LeagueFilter>('全部');
 
-  const fetchMatches = async (retries = 3) => {
+  const fetchMatches = useCallback(async () => {
     try {
-      const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL || 'http://localhost:9091';
-      const response = await fetch(`${baseUrl}/api/v1/matches?league=${encodeURIComponent(selectedLeague)}`, {
-        signal: AbortSignal.timeout(5000),
-      });
-      
-      if (!response.ok) throw new Error('Network response not ok');
-      
-      const data = await response.json();
-      if (data.code === 0) {
-        setMatches(Array.isArray(data.data) ? data.data : []);
+      const response = await api.getMatches();
+      if (response.code === 0) {
+        setMatches(response.data as Match[]);
       }
-    } catch (e) {
-      if (retries > 0) {
-        await new Promise(r => setTimeout(r, 500));
-        return fetchMatches(retries - 1);
-      }
-      console.log('Failed to fetch matches');
+    } catch (error) {
+      console.error('Failed to fetch matches:', error);
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
-  };
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
-      if (league) {
-        setSelectedLeague(league);
-      }
-    }, [league])
-  );
-
-  useFocusEffect(
-    useCallback(() => {
+      initStorage();
       fetchMatches();
-    }, [selectedLeague])
+    }, [fetchMatches])
   );
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    fetchMatches();
+  const filteredMatches = matches.filter((match) => {
+    if (activeFilter === '全部') return true;
+    if (activeFilter === '足球联赛') return match.league.includes('足球');
+    if (activeFilter === '篮球联赛') return match.league.includes('篮球');
+    return true;
+  });
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return `${date.getMonth() + 1}月${date.getDate()}日`;
   };
 
-  const formatDateTime = (dateStr: string) => {
-    const date = new Date(dateStr);
-    const month = date.getMonth() + 1;
-    const day = date.getDate();
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
     const hours = date.getHours().toString().padStart(2, '0');
     const minutes = date.getMinutes().toString().padStart(2, '0');
-    const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-    const weekday = weekdays[date.getDay()];
-    return {
-      date: `${month}/${day}`,
-      weekday,
-      time: `${hours}:${minutes}`,
-    };
+    return `${hours}:${minutes}`;
+  };
+
+  const getStatusBadge = (status: string) => {
+    if (status === 'completed') {
+      return <Badge className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs">已结束</Badge>;
+    }
+    if (status === 'live') {
+      return <Badge className="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs">进行中</Badge>;
+    }
+    return <Badge className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs">未开始</Badge>;
   };
 
   const getLeagueIcon = (league: string) => {
-    return league.includes('篮球') ? 'basketball' : 'football';
+    return league.includes('篮球') ? '篮球' : '足球';
   };
 
   const getLeagueColor = (league: string) => {
-    return league.includes('篮球') ? '#FF6584' : '#00B894';
+    return league.includes('篮球') ? 'bg-orange-500' : 'bg-emerald-500';
   };
-
-  const MatchCard = ({ item }: { item: Match }) => {
-    const { date, weekday, time } = formatDateTime(item.match_time);
-    const isFinished = item.status === 'finished';
-    const leagueColor = getLeagueColor(item.league);
-    
-    return (
-      <View style={styles.cardOuter}>
-        <View style={styles.cardInner}>
-          {/* Date Header */}
-          <View style={styles.dateHeader}>
-            <Text style={styles.dateText}>{date}</Text>
-            <Text style={styles.weekdayText}>{weekday}</Text>
-            <Text style={styles.timeText}>{time}</Text>
-          </View>
-          
-          {/* Teams */}
-          <View style={styles.matchContainer}>
-            <View style={styles.team}>
-              <View style={[styles.teamBadge, { backgroundColor: `${leagueColor}1A` }]}>
-                <FontAwesome6 name="shirt" size={20} color={leagueColor} />
-              </View>
-              <Text style={styles.teamName} numberOfLines={1}>{item.home_team}</Text>
-            </View>
-            
-            <View style={styles.scoreContainer}>
-              {isFinished ? (
-                <>
-                  <Text style={styles.score}>{item.home_score ?? 0}</Text>
-                  <Text style={styles.scoreDivider}>:</Text>
-                  <Text style={styles.score}>{item.away_score ?? 0}</Text>
-                </>
-              ) : (
-                <Text style={styles.vsText}>VS</Text>
-              )}
-            </View>
-            
-            <View style={styles.team}>
-              <View style={[styles.teamBadge, { backgroundColor: `${leagueColor}1A` }]}>
-                <FontAwesome6 name="shirt" size={20} color={leagueColor} />
-              </View>
-              <Text style={styles.teamName} numberOfLines={1}>{item.away_team}</Text>
-            </View>
-          </View>
-          
-          {/* Venue */}
-          <View style={styles.venueContainer}>
-            <FontAwesome6 name="location-dot" size={12} color="#B2BEC3" />
-            <Text style={styles.venueText}>{item.venue}</Text>
-            <View style={[styles.statusBadge, { 
-              backgroundColor: isFinished ? 'rgba(178, 190, 195, 0.12)' : 'rgba(108, 99, 255, 0.12)' 
-            }]}>
-              <Text style={[styles.statusText, { 
-                color: isFinished ? '#B2BEC3' : '#6C63FF' 
-              }]}>
-                {isFinished ? '已结束' : '即将开始'}
-              </Text>
-            </View>
-          </View>
-        </View>
-      </View>
-    );
-  };
-
-  const LeagueTab = ({ name, active }: { name: string; active: boolean }) => (
-    <TouchableOpacity 
-      style={[styles.tab, active && styles.tabActive]}
-      onPress={() => setSelectedLeague(name)}
-    >
-      <FontAwesome6 
-        name={getLeagueIcon(name) as any} 
-        size={16} 
-        color={active ? '#FFFFFF' : '#6C63FF'} 
-      />
-      <Text style={[styles.tabText, active && styles.tabTextActive]}>{name}</Text>
-    </TouchableOpacity>
-  );
 
   return (
     <Screen>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>赛程安排</Text>
-        <Text style={styles.headerSubtitle}>{selectedLeague}</Text>
-      </View>
-      
-      {/* League Tabs */}
-      <View style={styles.tabContainer}>
-        <LeagueTab name="校足球联赛" active={selectedLeague === '校足球联赛'} />
-        <LeagueTab name="校篮球联赛" active={selectedLeague === '校篮球联赛'} />
-      </View>
-      
-      <ScrollView 
-        style={styles.container} 
-        contentContainerStyle={styles.contentContainer}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#6C63FF']} />
-        }
-      >
-        {loading ? (
-          <View style={styles.emptyContainer}>
-            <FontAwesome6 name="spinner" size={32} color="#B2BEC3" />
-            <Text style={styles.emptyText}>加载中...</Text>
+      <View className="flex-1 bg-gray-50">
+        {/* 顶部标题 */}
+        <View className="bg-white px-5 pt-12 pb-4 border-b border-gray-100">
+          <Text className="text-gray-900 text-xl font-bold">足联篮联赛程</Text>
+          <Text className="text-gray-400 text-sm mt-0.5">
+            {loading ? '加载中...' : `共 ${matches.length} 场比赛`}
+          </Text>
+        </View>
+
+        {/* 筛选按钮 */}
+        <View className="bg-white px-4 py-3 border-b border-gray-100">
+          <View className="flex-row bg-gray-100 rounded-xl p-1">
+            {(['全部', '足球联赛', '篮球联赛'] as LeagueFilter[]).map((filter) => (
+              <Button
+                key={filter}
+                onPress={() => setActiveFilter(filter)}
+                className={`flex-1 py-2 px-3 rounded-lg ${
+                  activeFilter === filter ? 'bg-white shadow-sm' : 'bg-transparent'
+                }`}
+              >
+                <Text
+                  className={`text-sm font-medium text-center ${
+                    activeFilter === filter ? 'text-blue-600' : 'text-gray-500'
+                  }`}
+                >
+                  {filter}
+                </Text>
+              </Button>
+            ))}
           </View>
-        ) : matches.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <FontAwesome6 name="calendar-xmark" size={48} color="#B2BEC3" />
-            <Text style={styles.emptyText}>暂无赛程</Text>
-          </View>
-        ) : (
-          matches.map((item) => (
-            <MatchCard key={item.id} item={item} />
-          ))
-        )}
-        <View style={{ height: 120 }} />
-      </ScrollView>
+        </View>
+
+        {/* 赛程列表 */}
+        <View className="flex-1 px-4 py-4">
+          {loading ? (
+            <View className="flex-1 items-center justify-center">
+              <Text className="text-gray-400">加载中...</Text>
+            </View>
+          ) : filteredMatches.length === 0 ? (
+            <View className="flex-1 items-center justify-center">
+              <Text className="text-gray-400">暂无赛程</Text>
+            </View>
+          ) : (
+            filteredMatches.map((item, index) => (
+              <Card key={item.id} className="mb-3 bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100">
+                {/* 联赛标签 */}
+                <View className={`${getLeagueColor(item.league)} px-3 py-1.5 flex-row items-center`}>
+                  <Text className="text-white text-sm mr-1">{getLeagueIcon(item.league)}</Text>
+                  <Text className="text-white text-xs font-medium">{item.league}</Text>
+                </View>
+
+                <View className="p-4">
+                  {/* 对阵双方 */}
+                  <View className="flex-row items-center justify-between mb-3">
+                    <View className="flex-1 items-center">
+                      <Text className="text-gray-800 font-bold text-base">{item.home_team}</Text>
+                    </View>
+                    
+                    <View className="px-4">
+                      {item.home_score !== null && item.away_score !== null ? (
+                        <View className="bg-gray-100 rounded-lg px-3 py-1">
+                          <Text className="text-gray-700 font-bold text-lg">
+                            {item.home_score} - {item.away_score}
+                          </Text>
+                        </View>
+                      ) : (
+                        <Text className="text-gray-400 text-lg">VS</Text>
+                      )}
+                    </View>
+                    
+                    <View className="flex-1 items-center">
+                      <Text className="text-gray-800 font-bold text-base">{item.away_team}</Text>
+                    </View>
+                  </View>
+
+                  {/* 比赛信息 */}
+                  <View className="flex-row items-center justify-between pt-3 border-t border-gray-100">
+                    <View className="flex-row items-center">
+                      <Text className="text-gray-400 text-xs">日期 {formatDate(item.match_time)}</Text>
+                      <Text className="text-blue-500 text-xs ml-3 font-medium">
+                        时间 {formatTime(item.match_time)}
+                      </Text>
+                    </View>
+                    {getStatusBadge(item.status)}
+                  </View>
+
+                  {/* 场地 */}
+                  <View className="flex-row items-center mt-2">
+                    <Text className="text-gray-400 text-xs">地点 {item.venue}</Text>
+                  </View>
+                </View>
+              </Card>
+            ))
+          )}
+        </View>
+      </View>
     </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F0F0F3',
-  },
-  contentContainer: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 120,
-  },
-  header: {
-    backgroundColor: '#F0F0F3',
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 12,
-  },
-  headerTitle: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#2D3436',
-  },
-  headerSubtitle: {
-    fontSize: 13,
-    color: '#636E72',
-    marginTop: 4,
-  },
-  tabContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    marginBottom: 16,
-    gap: 12,
-  },
-  tab: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    borderRadius: 16,
-    backgroundColor: 'rgba(108, 99, 255, 0.12)',
-  },
-  tabActive: {
-    backgroundColor: '#6C63FF',
-  },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6C63FF',
-  },
-  tabTextActive: {
-    color: '#FFFFFF',
-  },
-  cardOuter: {
-    marginBottom: 16,
-  },
-  cardInner: {
-    backgroundColor: '#F0F0F3',
-    borderRadius: 24,
-    padding: 20,
-    shadowColor: '#D1D9E6',
-    shadowOffset: { width: 6, height: 6 },
-    shadowOpacity: 0.7,
-    shadowRadius: 8,
-    elevation: 6,
-    borderWidth: 0.5,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
-  },
-  dateHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    gap: 8,
-  },
-  dateText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#6C63FF',
-  },
-  weekdayText: {
-    fontSize: 12,
-    color: '#636E72',
-  },
-  timeText: {
-    fontSize: 12,
-    color: '#636E72',
-    marginLeft: 'auto',
-  },
-  matchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  team: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  teamBadge: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  teamName: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#2D3436',
-    textAlign: 'center',
-  },
-  scoreContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-  },
-  score: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#2D3436',
-  },
-  scoreDivider: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#B2BEC3',
-    marginHorizontal: 8,
-  },
-  vsText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#B2BEC3',
-  },
-  venueContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingTop: 12,
-    borderTopWidth: 0.5,
-    borderTopColor: 'rgba(255, 255, 255, 0.5)',
-  },
-  venueText: {
-    fontSize: 12,
-    color: '#636E72',
-    flex: 1,
-  },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 10,
-  },
-  statusText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: '#B2BEC3',
-    marginTop: 12,
-  },
-});
