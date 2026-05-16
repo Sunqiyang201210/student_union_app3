@@ -221,12 +221,17 @@ export default function ManageScreen() {
             Toast.show({ type: 'error', text1: '请先登录' });
             return;
           }
+          
           const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL;
           let url = '';
           
-          if (activeTab === 'notifications') url = `${baseUrl}/api/v1/notifications/${id}`;
-          else if (activeTab === 'activities') url = `${baseUrl}/api/v1/activities/${id}`;
-          else if (activeTab === 'matches') url = `${baseUrl}/api/v1/matches/${id}`;
+          if (activeTab === 'notifications') {
+            url = `${baseUrl}/api/v1/notifications/${id}`;
+          } else if (activeTab === 'activities') {
+            url = `${baseUrl}/api/v1/activities/${id}`;
+          } else if (activeTab === 'matches') {
+            url = `${baseUrl}/api/v1/matches/${id}`;
+          }
           
           if (!url) {
             Toast.show({ type: 'error', text1: '未知的类型' });
@@ -241,12 +246,19 @@ export default function ManageScreen() {
                 'Content-Type': 'application/json',
               },
             });
-            const data = await response.json();
+            
+            let data;
+            try {
+              data = await response.json();
+            } catch {
+              data = { message: '响应解析失败' };
+            }
+            
             if (response.ok && data.code === 0) {
               Toast.show({ type: 'success', text1: '删除成功' });
               fetchData();
             } else {
-              Toast.show({ type: 'error', text1: data.message || '删除失败' });
+              Toast.show({ type: 'error', text1: data.message || `删除失败(${response.status})` });
             }
           } catch (e) {
             Toast.show({ type: 'error', text1: '网络错误，请重试' });
@@ -346,6 +358,27 @@ export default function ManageScreen() {
       </View>
     </View>
   );
+
+  // 未登录提示
+  if (!token) {
+    return (
+      <Screen>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>内容管理</Text>
+          <Text style={styles.headerSubtitle}>发布和管理学生会内容</Text>
+        </View>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <FontAwesome6 name="lock" size={60} color="#CCC" />
+          <Text style={{ fontSize: 18, color: '#666', marginTop: 16, textAlign: 'center' }}>
+            请先登录管理员账号
+          </Text>
+          <Text style={{ fontSize: 14, color: '#999', marginTop: 8, textAlign: 'center' }}>
+            在"我的"页面进行登录
+          </Text>
+        </View>
+      </Screen>
+    );
+  }
 
   return (
     <Screen>
