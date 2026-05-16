@@ -4,6 +4,8 @@ import { Link } from 'expo-router';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSafeRouter } from '@/hooks/useSafeRouter';
+import { useState, useCallback } from 'react';
+import { useFocusEffect } from 'expo-router';
 
 const MenuItem = ({ 
   icon, 
@@ -37,11 +39,46 @@ const MenuItem = ({
 export default function ProfileScreen() {
   const { isAuthenticated, user, logout } = useAuth();
   const router = useSafeRouter();
+  const [stats, setStats] = useState({ notifications: 0, activities: 0, matches: 0 });
 
   const handleLogout = () => {
     logout();
     router.replace('/');
   };
+
+  // 从API获取统计数据
+  useFocusEffect(
+    useCallback(() => {
+      const fetchStats = async () => {
+        try {
+          const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL || 'http://localhost:9091';
+          const [notifRes, actRes, matchRes] = await Promise.all([
+            fetch(`${baseUrl}/api/v1/notifications`),
+            fetch(`${baseUrl}/api/v1/activities`),
+            fetch(`${baseUrl}/api/v1/matches`),
+          ]);
+          
+          if (notifRes.ok && actRes.ok && matchRes.ok) {
+            const [notifData, actData, matchData] = await Promise.all([
+              notifRes.json(),
+              actRes.json(),
+              matchRes.json(),
+            ]);
+            
+            setStats({
+              notifications: Array.isArray(notifData.data) ? notifData.data.length : 0,
+              activities: Array.isArray(actData.data) ? actData.data.length : 0,
+              matches: Array.isArray(matchData.data) ? matchData.data.length : 0,
+            });
+          }
+        } catch (e) {
+          // 静默失败，使用默认值0
+        }
+      };
+      
+      fetchStats();
+    }, [])
+  );
 
   return (
     <Screen>
@@ -85,17 +122,17 @@ export default function ProfileScreen() {
         {/* Stats Row */}
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>4</Text>
+            <Text style={styles.statNumber}>{stats.notifications}</Text>
             <Text style={styles.statLabel}>通知</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>4</Text>
+            <Text style={styles.statNumber}>{stats.activities}</Text>
             <Text style={styles.statLabel}>活动</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>10</Text>
+            <Text style={styles.statNumber}>{stats.matches}</Text>
             <Text style={styles.statLabel}>赛程</Text>
           </View>
         </View>
