@@ -60,28 +60,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const login = async (username: string, password: string) => {
-    try {
-      const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL || 'http://localhost:9091';
-      const response = await fetch(`${baseUrl}/api/v1/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
-      });
-      
-      const data = await response.json();
-      
-      if (data.code === 0) {
-        await AsyncStorage.setItem(TOKEN_KEY, data.data.token);
-        await AsyncStorage.setItem(USER_KEY, JSON.stringify(data.data.user));
-        setToken(data.data.token);
-        setUser(data.data.user);
-        return { success: true, message: '登录成功' };
-      } else {
-        return { success: false, message: data.message || '登录失败' };
+    const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL || 'http://localhost:9091';
+    const url = `${baseUrl}/api/v1/auth/login`;
+    
+    // 重试机制：最多3次
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+        });
+        
+        const data = await response.json();
+        
+        if (data.code === 0) {
+          await AsyncStorage.setItem(TOKEN_KEY, data.data.token);
+          await AsyncStorage.setItem(USER_KEY, JSON.stringify(data.data.user));
+          setToken(data.data.token);
+          setUser(data.data.user);
+          return { success: true, message: '登录成功' };
+        } else {
+          return { success: false, message: data.message || '登录失败' };
+        }
+      } catch (e) {
+        console.log(`Login attempt ${attempt} failed:`, e);
+        if (attempt < 3) {
+          await new Promise(resolve => setTimeout(resolve, 500)); // 等待500ms后重试
+        }
       }
-    } catch (e) {
-      return { success: false, message: '网络错误，请稍后重试' };
     }
+    
+    return { success: false, message: '网络错误，请检查网络连接后重试' };
   };
 
   const logout = async () => {
