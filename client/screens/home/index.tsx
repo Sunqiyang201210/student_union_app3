@@ -50,7 +50,7 @@ export default function HomeScreen() {
     useCallback(() => {
       const fetchCounts = async () => {
         try {
-          const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL;
+          const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL || 'http://localhost:9091';
           const [notifRes, actRes] = await Promise.all([
             fetch(`${baseUrl}/api/v1/notifications`),
             fetch(`${baseUrl}/api/v1/activities`),
@@ -58,11 +58,12 @@ export default function HomeScreen() {
           const notifData = await notifRes.json();
           const actData = await actRes.json();
           setCounts({
-            notification: notifData.data?.length || 0,
-            activity: actData.data?.length || 0,
+            notification: Array.isArray(notifData.data) ? notifData.data.length : 0,
+            activity: Array.isArray(actData.data) ? actData.data.length : 0,
           });
         } catch (e) {
-          console.log('Fetch counts failed:', e);
+          console.log('Failed to fetch counts, using defaults');
+          setCounts({ notification: 0, activity: 0 });
         }
       };
       fetchCounts();

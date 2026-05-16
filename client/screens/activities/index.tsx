@@ -22,14 +22,15 @@ export default function ActivitiesScreen() {
 
   const fetchActivities = async () => {
     try {
-      const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL;
+      const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL || 'http://localhost:9091';
       const response = await fetch(`${baseUrl}/api/v1/activities`);
       const data = await response.json();
       if (data.code === 0) {
-        setActivities(data.data || []);
+        setActivities(Array.isArray(data.data) ? data.data : []);
       }
     } catch (e) {
-      console.log('Fetch activities failed:', e);
+      console.log('Failed to fetch activities');
+      setActivities([]);
     } finally {
       setLoading(false);
       setRefreshing(false);

@@ -45,14 +45,15 @@ export default function NotificationsScreen() {
 
   const fetchNotifications = async () => {
     try {
-      const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL;
+      const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL || 'http://localhost:9091';
       const response = await fetch(`${baseUrl}/api/v1/notifications`);
       const data = await response.json();
       if (data.code === 0) {
-        setNotifications(data.data || []);
+        setNotifications(Array.isArray(data.data) ? data.data : []);
       }
     } catch (e) {
-      console.log('Fetch notifications failed:', e);
+      console.log('Failed to fetch notifications');
+      setNotifications([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
