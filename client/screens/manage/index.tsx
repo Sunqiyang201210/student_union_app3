@@ -140,13 +140,13 @@ export default function ManageScreen() {
   };
 
   const handleSubmit = async () => {
-    if (!token) {
-      Toast.show({ type: 'error', text1: '请先登录' });
+    const currentToken = token;
+    if (!currentToken) {
+      Toast.show({ type: 'error', text1: '请先登录管理员账号' });
       return;
     }
-
     setLoading(true);
-    const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL || 'http://9.129.42.133:9091';
+    const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL || 'http://localhost:9091';
     
     try {
       let url = '';
@@ -187,7 +187,7 @@ export default function ManageScreen() {
       const response = await fetch(url, {
         method: editingItem ? 'PUT' : 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${currentToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(body),
