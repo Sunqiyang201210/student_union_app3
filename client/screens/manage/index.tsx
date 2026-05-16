@@ -64,7 +64,7 @@ export default function ManageScreen() {
   const [formVenue, setFormVenue] = useState('');
 
   const fetchData = async () => {
-    const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL;
+    const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL || 'http://9.129.42.133:9091';
     try {
       const [notifRes, actRes, matchRes] = await Promise.all([
         fetch(`${baseUrl}/api/v1/notifications`),
@@ -146,7 +146,7 @@ export default function ManageScreen() {
     }
 
     setLoading(true);
-    const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL;
+    const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL || 'http://9.129.42.133:9091';
     
     try {
       let url = '';
@@ -222,24 +222,20 @@ export default function ManageScreen() {
         text: '删除',
         style: 'destructive',
         onPress: async () => {
-          const currentToken = token; // 立即捕获当前token
-          
-          const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL;
-          let url = '';
+          const currentToken = token;
+          const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL || 'http://localhost:9091';
+          let endpoint = '';
           
           if (activeTab === 'notifications') {
-            url = `${baseUrl}/api/v1/notifications/${id}`;
+            endpoint = `/api/v1/notifications/${id}`;
           } else if (activeTab === 'activities') {
-            url = `${baseUrl}/api/v1/activities/${id}`;
+            endpoint = `/api/v1/activities/${id}`;
           } else if (activeTab === 'matches') {
-            url = `${baseUrl}/api/v1/matches/${id}`;
+            endpoint = `/api/v1/matches/${id}`;
           }
           
-          if (!url) {
-            Toast.show({ type: 'error', text1: '未知的类型' });
-            return;
-          }
-
+          const url = `${baseUrl}${endpoint}`;
+          
           try {
             const response = await fetch(url, {
               method: 'DELETE',
@@ -250,14 +246,17 @@ export default function ManageScreen() {
             });
             
             const data = await response.json();
+            console.log('Delete response:', response.status, data);
             
             if (response.ok && data.code === 0) {
               Toast.show({ type: 'success', text1: '删除成功' });
               fetchData();
             } else {
-              Toast.show({ type: 'error', text1: data.message || `删除失败(${response.status})` });
+              const errorMsg = data.message || `HTTP ${response.status}`;
+              Toast.show({ type: 'error', text1: `删除失败: ${errorMsg}` });
             }
           } catch (e: any) {
+            console.log('Delete error:', e);
             Toast.show({ type: 'error', text1: `网络错误: ${e?.message || '请重试'}` });
           }
         },
