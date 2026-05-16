@@ -43,21 +43,25 @@ export default function NotificationsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = async (retries = 3) => {
     try {
       const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL || 'http://localhost:9091';
-      const response = await fetch(`${baseUrl}/api/v1/notifications`);
+      const response = await fetch(`${baseUrl}/api/v1/notifications`, {
+        signal: AbortSignal.timeout(5000),
+      });
       
-      if (!response.ok) {
-        throw new Error('Network response not ok');
-      }
+      if (!response.ok) throw new Error('Network response not ok');
       
       const data = await response.json();
       if (data.code === 0) {
         setNotifications(Array.isArray(data.data) ? data.data : []);
       }
     } catch (e) {
-      console.log('Failed to fetch notifications');
+      if (retries > 0) {
+        await new Promise(r => setTimeout(r, 500));
+        return fetchNotifications(retries - 1);
+      }
+      console.log('Failed to fetch notifications after retries');
     } finally {
       setLoading(false);
       setRefreshing(false);

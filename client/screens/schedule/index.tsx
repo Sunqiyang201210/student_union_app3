@@ -24,20 +24,24 @@ export default function ScheduleScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedLeague, setSelectedLeague] = useState(league || '校足球联赛');
 
-  const fetchMatches = async () => {
+  const fetchMatches = async (retries = 3) => {
     try {
       const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL || 'http://localhost:9091';
-      const response = await fetch(`${baseUrl}/api/v1/matches?league=${encodeURIComponent(selectedLeague)}`);
+      const response = await fetch(`${baseUrl}/api/v1/matches?league=${encodeURIComponent(selectedLeague)}`, {
+        signal: AbortSignal.timeout(5000),
+      });
       
-      if (!response.ok) {
-        throw new Error('Network response not ok');
-      }
+      if (!response.ok) throw new Error('Network response not ok');
       
       const data = await response.json();
       if (data.code === 0) {
         setMatches(Array.isArray(data.data) ? data.data : []);
       }
     } catch (e) {
+      if (retries > 0) {
+        await new Promise(r => setTimeout(r, 500));
+        return fetchMatches(retries - 1);
+      }
       console.log('Failed to fetch matches');
     } finally {
       setLoading(false);

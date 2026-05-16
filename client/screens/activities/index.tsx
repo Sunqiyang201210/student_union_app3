@@ -20,20 +20,24 @@ export default function ActivitiesScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchActivities = async () => {
+  const fetchActivities = async (retries = 3) => {
     try {
       const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL || 'http://localhost:9091';
-      const response = await fetch(`${baseUrl}/api/v1/activities`);
+      const response = await fetch(`${baseUrl}/api/v1/activities`, {
+        signal: AbortSignal.timeout(5000),
+      });
       
-      if (!response.ok) {
-        throw new Error('Network response not ok');
-      }
+      if (!response.ok) throw new Error('Network response not ok');
       
       const data = await response.json();
       if (data.code === 0) {
         setActivities(Array.isArray(data.data) ? data.data : []);
       }
     } catch (e) {
+      if (retries > 0) {
+        await new Promise(r => setTimeout(r, 500));
+        return fetchActivities(retries - 1);
+      }
       console.log('Failed to fetch activities');
     } finally {
       setLoading(false);
