@@ -211,16 +211,18 @@ export default function ManageScreen() {
   };
 
   const handleDelete = (id: number) => {
+    if (!token) {
+      Toast.show({ type: 'error', text1: '请先登录管理员账号' });
+      return;
+    }
+    
     Alert.alert('确认删除', '确定要删除这条记录吗？', [
       { text: '取消', style: 'cancel' },
       {
         text: '删除',
         style: 'destructive',
         onPress: async () => {
-          if (!token) {
-            Toast.show({ type: 'error', text1: '请先登录' });
-            return;
-          }
+          const currentToken = token; // 立即捕获当前token
           
           const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL;
           let url = '';
@@ -242,17 +244,12 @@ export default function ManageScreen() {
             const response = await fetch(url, {
               method: 'DELETE',
               headers: { 
-                'Authorization': `Bearer ${token}`,
+                'Authorization': `Bearer ${currentToken}`,
                 'Content-Type': 'application/json',
               },
             });
             
-            let data;
-            try {
-              data = await response.json();
-            } catch {
-              data = { message: '响应解析失败' };
-            }
+            const data = await response.json();
             
             if (response.ok && data.code === 0) {
               Toast.show({ type: 'success', text1: '删除成功' });
@@ -260,8 +257,8 @@ export default function ManageScreen() {
             } else {
               Toast.show({ type: 'error', text1: data.message || `删除失败(${response.status})` });
             }
-          } catch (e) {
-            Toast.show({ type: 'error', text1: '网络错误，请重试' });
+          } catch (e: any) {
+            Toast.show({ type: 'error', text1: `网络错误: ${e?.message || '请重试'}` });
           }
         },
       },
