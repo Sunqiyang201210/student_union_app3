@@ -428,7 +428,7 @@ app.get('/api/v1/feedbacks', authMiddleware, (req, res) => {
 
 app.post('/api/v1/feedbacks', (req, res) => {
   try {
-    const { content, contact, type } = req.body;
+    const { submitter, content, detail, contact, type } = req.body;
     
     if (!content) {
       return res.status(400).json({ code: 400, message: '反馈内容不能为空' });
@@ -436,7 +436,9 @@ app.post('/api/v1/feedbacks', (req, res) => {
     
     const newFeedback = {
       id: nextFeedbackId++,
+      submitter: submitter || '匿名用户',
       content,
+      detail: detail || '',
       contact: contact || null,
       type: type || 'suggestion',
       status: 'pending',
@@ -447,9 +449,9 @@ app.post('/api/v1/feedbacks', (req, res) => {
     
     // 转发到云端专用API
     const cloudData = JSON.stringify({
-      submitter: contact || '匿名用户',
+      submitter: submitter || '匿名用户',
       content: content.substring(0, 50),
-      detail: `${type || 'suggestion'}: ${content}`
+      detail: detail || content
     });
     
     const cloudOptions = {
