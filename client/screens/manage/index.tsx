@@ -217,28 +217,39 @@ export default function ManageScreen() {
         text: '删除',
         style: 'destructive',
         onPress: async () => {
-          if (!token) return;
+          if (!token) {
+            Toast.show({ type: 'error', text1: '请先登录' });
+            return;
+          }
           const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL;
           let url = '';
           
           if (activeTab === 'notifications') url = `${baseUrl}/api/v1/notifications/${id}`;
           else if (activeTab === 'activities') url = `${baseUrl}/api/v1/activities/${id}`;
           else if (activeTab === 'matches') url = `${baseUrl}/api/v1/matches/${id}`;
+          
+          if (!url) {
+            Toast.show({ type: 'error', text1: '未知的类型' });
+            return;
+          }
 
           try {
             const response = await fetch(url, {
               method: 'DELETE',
-              headers: { 'Authorization': `Bearer ${token}` },
+              headers: { 
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
             });
             const data = await response.json();
-            if (data.code === 0) {
+            if (response.ok && data.code === 0) {
               Toast.show({ type: 'success', text1: '删除成功' });
               fetchData();
             } else {
               Toast.show({ type: 'error', text1: data.message || '删除失败' });
             }
           } catch (e) {
-            Toast.show({ type: 'error', text1: '网络错误' });
+            Toast.show({ type: 'error', text1: '网络错误，请重试' });
           }
         },
       },
