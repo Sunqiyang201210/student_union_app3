@@ -1,25 +1,40 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
 import { Screen } from '@/components/Screen';
 import { useSafeRouter } from '@/hooks/useSafeRouter';
 import { FontAwesome6 } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 
-const feedbackTypes = [
-  { value: 'suggestion', label: '建议', icon: 'lightbulb' },
-  { value: 'complaint', label: '投诉', icon: 'exclamation-circle' },
-  { value: 'question', label: '咨询', icon: 'circle-question' },
-  { value: 'other', label: '其他', icon: 'ellipsis' },
-];
-
 export default function FeedbackScreen() {
   const router = useSafeRouter();
+  const [submitter, setSubmitter] = useState('');
   const [content, setContent] = useState('');
-  const [contact, setContact] = useState('');
-  const [selectedType, setSelectedType] = useState('suggestion');
+  const [detail, setDetail] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  // 字数统计
+  const submitterLength = submitter.length;
+  const contentLength = content.length;
+  const detailLength = detail.length;
+
   const handleSubmit = async () => {
+    // 验证必填字段
+    if (!submitter.trim()) {
+      Toast.show({
+        type: 'error',
+        text1: '请输入提交人姓名',
+      });
+      return;
+    }
+
+    if (submitterLength > 20) {
+      Toast.show({
+        type: 'error',
+        text1: '提交人姓名不能超过20字',
+      });
+      return;
+    }
+
     if (!content.trim()) {
       Toast.show({
         type: 'error',
@@ -28,9 +43,24 @@ export default function FeedbackScreen() {
       return;
     }
 
+    if (contentLength > 50) {
+      Toast.show({
+        type: 'error',
+        text1: '反馈内容不能超过50字',
+      });
+      return;
+    }
+
+    if (detailLength > 500) {
+      Toast.show({
+        type: 'error',
+        text1: '详细内容不能超过500字',
+      });
+      return;
+    }
+
     setSubmitting(true);
     try {
-      // 通过后端API代理提交到云端
       const API_BASE = process.env.EXPO_PUBLIC_BACKEND_BASE_URL || 'http://localhost:9091';
       const response = await fetch(`${API_BASE}/api/v1/feedbacks`, {
         method: 'POST',
@@ -38,9 +68,9 @@ export default function FeedbackScreen() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          submitter: submitter.trim(),
           content: content.trim(),
-          contact: contact.trim() || '匿名用户',
-          type: selectedType,
+          detail: detail.trim(),
         }),
       });
       
@@ -52,8 +82,9 @@ export default function FeedbackScreen() {
           text1: '提交成功',
           text2: '感谢您的反馈，我们会尽快处理！',
         });
+        setSubmitter('');
         setContent('');
-        setContact('');
+        setDetail('');
         setTimeout(() => {
           router.back();
         }, 1500);
@@ -76,35 +107,6 @@ export default function FeedbackScreen() {
     }
   };
 
-  const TypeSelector = () => (
-    <View style={styles.typeContainer}>
-      {feedbackTypes.map((type) => (
-        <TouchableOpacity
-          key={type.value}
-          style={[
-            styles.typeItem,
-            selectedType === type.value && styles.typeItemActive,
-          ]}
-          onPress={() => setSelectedType(type.value)}
-        >
-          <FontAwesome6
-            name={type.icon as any}
-            size={18}
-            color={selectedType === type.value ? '#FFFFFF' : '#6C63FF'}
-          />
-          <Text
-            style={[
-              styles.typeText,
-              selectedType === type.value && styles.typeTextActive,
-            ]}
-          >
-            {type.label}
-          </Text>
-        </TouchableOpacity>
-      ))}
-    </View>
-  );
-
   return (
     <Screen>
       <KeyboardAvoidingView
@@ -126,40 +128,63 @@ export default function FeedbackScreen() {
             <View style={styles.backButton} />
           </View>
 
-          {/* Feedback Type */}
+          {/* Submitter Input */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>反馈类型</Text>
-            <TypeSelector />
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>提交人</Text>
+              <Text style={styles.required}>*必填</Text>
+            </View>
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={styles.input}
+                placeholder="请输入姓名"
+                placeholderTextColor="#B2BEC3"
+                value={submitter}
+                onChangeText={setSubmitter}
+                maxLength={20}
+              />
+              <Text style={styles.charCount}>{submitterLength}/20</Text>
+            </View>
           </View>
 
           {/* Content Input */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>反馈内容</Text>
-            <View style={styles.inputContainer}>
-              <TextInput
-                style={styles.textArea}
-                placeholder="请详细描述您的问题或建议..."
-                placeholderTextColor="#B2BEC3"
-                value={content}
-                onChangeText={setContent}
-                multiline
-                numberOfLines={6}
-                textAlignVertical="top"
-              />
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>反馈内容</Text>
+              <Text style={styles.required}>*必填</Text>
             </View>
-          </View>
-
-          {/* Contact Input */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>联系方式（选填）</Text>
             <View style={styles.inputContainer}>
               <TextInput
                 style={styles.input}
-                placeholder="手机号或邮箱"
+                placeholder="请简要描述您的反馈（≤50字）"
                 placeholderTextColor="#B2BEC3"
-                value={contact}
-                onChangeText={setContact}
+                value={content}
+                onChangeText={setContent}
+                maxLength={50}
               />
+              <Text style={styles.charCount}>{contentLength}/50</Text>
+            </View>
+          </View>
+
+          {/* Detail Input */}
+          <View style={styles.section}>
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>详细内容</Text>
+              <Text style={styles.optional}>选填</Text>
+            </View>
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={styles.textArea}
+                placeholder="请详细描述您的问题或建议（≤500字）..."
+                placeholderTextColor="#B2BEC3"
+                value={detail}
+                onChangeText={setDetail}
+                multiline
+                numberOfLines={6}
+                textAlignVertical="top"
+                maxLength={500}
+              />
+              <Text style={[styles.charCount, styles.charCountArea]}>{detailLength}/500</Text>
             </View>
           </View>
 
@@ -183,7 +208,6 @@ export default function FeedbackScreen() {
             </View>
             <Text style={styles.tipText}>
               · 请详细描述您遇到的问题或建议，以便我们更好地解决{'\n'}
-              · 联系方式仅用于问题反馈，不会用于其他用途{'\n'}
               · 我们将在1-3个工作日内处理您的反馈
             </Text>
           </View>
@@ -204,112 +228,121 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 120,
+    padding: 20,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    marginBottom: 24,
+    paddingTop: 8,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#6C63FF',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '800',
+    fontSize: 18,
+    fontWeight: '600',
     color: '#2D3436',
-  },
-  headerSubtitle: {
-    fontSize: 13,
-    color: '#636E72',
-    marginTop: 4,
   },
   section: {
     marginBottom: 20,
   },
-  sectionTitle: {
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  label: {
     fontSize: 15,
     fontWeight: '600',
     color: '#2D3436',
-    marginBottom: 12,
   },
-  typeContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
+  required: {
+    fontSize: 12,
+    color: '#E74C3C',
   },
-  typeItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 16,
-    backgroundColor: 'rgba(108, 99, 255, 0.12)',
-  },
-  typeItemActive: {
-    backgroundColor: '#6C63FF',
-  },
-  typeText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6C63FF',
-  },
-  typeTextActive: {
-    color: '#FFFFFF',
+  optional: {
+    fontSize: 12,
+    color: '#95A5A6',
   },
   inputContainer: {
-    backgroundColor: '#E8E8EB',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.6)',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
   input: {
     fontSize: 15,
     color: '#2D3436',
-    padding: 16,
+    paddingVertical: 4,
   },
   textArea: {
     fontSize: 15,
     color: '#2D3436',
-    padding: 16,
-    minHeight: 140,
+    minHeight: 120,
+    paddingVertical: 4,
+  },
+  charCount: {
+    fontSize: 12,
+    color: '#B2BEC3',
+    textAlign: 'right',
+    marginTop: 8,
+  },
+  charCountArea: {
+    position: 'absolute',
+    bottom: 12,
+    right: 16,
   },
   submitButton: {
-    backgroundColor: '#6C63FF',
-    borderRadius: 9999,
-    paddingVertical: 16,
-    paddingHorizontal: 32,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    marginTop: 12,
-    marginBottom: 24,
+    backgroundColor: '#6C63FF',
+    borderRadius: 16,
+    paddingVertical: 16,
+    marginTop: 10,
     shadowColor: '#6C63FF',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
+    shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 6,
+    elevation: 4,
   },
   submitButtonDisabled: {
     opacity: 0.6,
   },
   submitButtonText: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#FFFFFF',
   },
   tipsCard: {
-    backgroundColor: 'rgba(108, 99, 255, 0.08)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 16,
+    marginTop: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
   tipHeader: {
     flexDirection: 'row',
