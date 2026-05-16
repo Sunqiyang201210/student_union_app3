@@ -292,12 +292,16 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#2D3436',
     paddingVertical: 4,
+    borderWidth: 0,
+    backgroundColor: 'transparent',
   },
   textArea: {
     fontSize: 15,
     color: '#2D3436',
     minHeight: 120,
     paddingVertical: 4,
+    borderWidth: 0,
+    backgroundColor: 'transparent',
   },
   charCount: {
     fontSize: 12,
