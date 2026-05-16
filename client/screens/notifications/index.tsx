@@ -47,13 +47,17 @@ export default function NotificationsScreen() {
     try {
       const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL || 'http://localhost:9091';
       const response = await fetch(`${baseUrl}/api/v1/notifications`);
+      
+      if (!response.ok) {
+        throw new Error('Network response not ok');
+      }
+      
       const data = await response.json();
       if (data.code === 0) {
         setNotifications(Array.isArray(data.data) ? data.data : []);
       }
     } catch (e) {
       console.log('Failed to fetch notifications');
-      setNotifications([]);
     } finally {
       setLoading(false);
       setRefreshing(false);

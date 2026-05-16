@@ -48,13 +48,22 @@ export default function HomeScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      let retryCount = 0;
+      const maxRetries = 3;
+      
       const fetchCounts = async () => {
         try {
           const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL || 'http://localhost:9091';
+          
           const [notifRes, actRes] = await Promise.all([
             fetch(`${baseUrl}/api/v1/notifications`),
             fetch(`${baseUrl}/api/v1/activities`),
           ]);
+          
+          if (!notifRes.ok || !actRes.ok) {
+            throw new Error('Network response not ok');
+          }
+          
           const notifData = await notifRes.json();
           const actData = await actRes.json();
           setCounts({
@@ -62,8 +71,12 @@ export default function HomeScreen() {
             activity: Array.isArray(actData.data) ? actData.data.length : 0,
           });
         } catch (e) {
-          console.log('Failed to fetch counts, using defaults');
-          setCounts({ notification: 0, activity: 0 });
+          retryCount++;
+          if (retryCount < maxRetries) {
+            setTimeout(fetchCounts, 500);
+          } else {
+            setCounts({ notification: 0, activity: 0 });
+          }
         }
       };
       fetchCounts();

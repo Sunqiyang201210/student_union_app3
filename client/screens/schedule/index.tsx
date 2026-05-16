@@ -28,13 +28,17 @@ export default function ScheduleScreen() {
     try {
       const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL || 'http://localhost:9091';
       const response = await fetch(`${baseUrl}/api/v1/matches?league=${encodeURIComponent(selectedLeague)}`);
+      
+      if (!response.ok) {
+        throw new Error('Network response not ok');
+      }
+      
       const data = await response.json();
       if (data.code === 0) {
         setMatches(Array.isArray(data.data) ? data.data : []);
       }
     } catch (e) {
       console.log('Failed to fetch matches');
-      setMatches([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
