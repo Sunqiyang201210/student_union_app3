@@ -6,6 +6,7 @@ import { Screen } from '@/components/Screen';
 import { Card, Text, View } from '@/components/ui';
 import { useFocusEffect } from 'expo-router';
 import { api, initStorage } from '@/utils/storage';
+import { FontAwesome6 } from '@expo/vector-icons';
 
 interface Stats {
   notifications: number;
@@ -17,7 +18,6 @@ export default function HomeScreen() {
   const [counts, setCounts] = useState<Stats>({ notifications: 0, activities: 0, matches: 0 });
   const [loading, setLoading] = useState(true);
 
-  // 初始化存储
   useFocusEffect(
     useCallback(() => {
       initStorage();
@@ -41,64 +41,109 @@ export default function HomeScreen() {
   const menuItems = [
     {
       title: '学生会通知',
-      icon: '📢',
-      iconBg: 'bg-blue-50',
+      subtitle: '查看最新通知',
+      icon: 'bullhorn',
       count: counts.notifications,
       href: '/notifications',
-      color: 'text-blue-600',
+      iconBg: 'rgba(108, 99, 255, 0.12)',
+      iconColor: '#6C63FF',
     },
     {
       title: '活动通知',
-      icon: '🎉',
-      iconBg: 'bg-orange-50',
+      subtitle: '精彩校园活动',
+      icon: 'party-bell',
       count: counts.activities,
       href: '/activities',
-      color: 'text-orange-600',
+      iconBg: 'rgba(255, 101, 132, 0.12)',
+      iconColor: '#FF6584',
     },
     {
       title: '足联篮联赛程',
-      icon: '⚽',
-      iconBg: 'bg-green-50',
+      subtitle: '足球篮球赛程',
+      icon: 'football',
       count: counts.matches,
       href: '/schedule',
-      color: 'text-green-600',
+      iconBg: 'rgba(0, 184, 148, 0.12)',
+      iconColor: '#00B894',
     },
     {
       title: '意见反馈',
-      icon: '💡',
-      iconBg: 'bg-purple-50',
+      subtitle: '提交您的建议',
+      icon: 'comment-dots',
       href: '/feedback',
-      color: 'text-purple-600',
+      iconBg: 'rgba(253, 203, 110, 0.12)',
+      iconColor: '#FDCB6E',
     },
   ];
 
   return (
     <Screen>
-      <View className="flex-1 bg-gray-50">
-        {/* 顶部标题 */}
-        <View className="bg-gradient-to-r from-blue-600 to-blue-700 px-5 pt-12 pb-8">
-          <Text className="text-white text-2xl font-bold">学生会</Text>
-          <Text className="text-blue-100 text-sm mt-1">Student Union</Text>
+      <View className="flex-1" style={{ backgroundColor: 'var(--background)' }}>
+        {/* 顶部渐变背景 */}
+        <View 
+          className="px-6 pt-14 pb-10"
+          style={{ 
+            background: 'linear-gradient(135deg, #6C63FF 0%, #896BFF 50%, #FF6584 100%)',
+            borderBottomLeftRadius: 32,
+            borderBottomRightRadius: 32,
+          }}
+        >
+          <Text className="text-white text-3xl font-bold">学生会</Text>
+          <Text className="text-white/80 text-sm mt-1 tracking-wide">Student Union</Text>
+          <Text className="text-white/60 text-xs mt-3">
+            校园生活服务助手
+          </Text>
         </View>
 
         {/* 功能菜单 */}
-        <View className="px-4 -mt-4">
+        <View className="px-4 -mt-6">
           <View className="flex-row flex-wrap justify-between">
             {menuItems.map((item, index) => (
               <Link key={index} href={item.href as any} asChild>
-                <Card className="w-[48%] mb-4 bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-                  <View className="flex-row items-center">
-                    <View className={`w-12 h-12 rounded-xl ${item.iconBg} flex items-center justify-center`}>
-                      <Text className="text-2xl">{item.icon}</Text>
+                <Card 
+                  className="w-[48%] mb-4"
+                  style={{ 
+                    backgroundColor: 'var(--surface)',
+                    borderRadius: 24,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 6, height: 6 },
+                    shadowOpacity: 0.08,
+                    shadowRadius: 12,
+                    elevation: 4,
+                  }}
+                >
+                  <View className="items-center p-4">
+                    <View 
+                      className="w-14 h-14 rounded-2xl items-center justify-center mb-3"
+                      style={{ backgroundColor: item.iconBg }}
+                    >
+                      <FontAwesome6 name={item.icon as any} size={24} color={item.iconColor} />
                     </View>
-                    <View className="ml-3 flex-1">
-                      <Text className="text-gray-800 font-medium">{item.title}</Text>
-                      {item.count !== undefined && (
-                        <Text className="text-gray-400 text-xs mt-0.5">
-                          {loading ? '加载中...' : `${item.count} 条内容`}
+                    <Text 
+                      className="font-semibold text-base mb-1"
+                      style={{ color: 'var(--foreground)' }}
+                    >
+                      {item.title}
+                    </Text>
+                    <Text 
+                      className="text-xs"
+                      style={{ color: 'var(--muted)' }}
+                    >
+                      {item.subtitle}
+                    </Text>
+                    {item.count !== undefined && (
+                      <View 
+                        className="mt-2 px-3 py-1 rounded-full"
+                        style={{ backgroundColor: item.iconBg }}
+                      >
+                        <Text 
+                          className="text-xs font-medium"
+                          style={{ color: item.iconColor }}
+                        >
+                          {loading ? '...' : `${item.count} 条`}
                         </Text>
-                      )}
-                    </View>
+                      </View>
+                    )}
                   </View>
                 </Card>
               </Link>
@@ -106,11 +151,32 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* 底部信息 */}
+        {/* 底部提示 */}
         <View className="px-4 mt-auto pb-8">
-          <Text className="text-center text-gray-400 text-xs">
-            校园生活服务助手
-          </Text>
+          <View 
+            className="rounded-2xl p-4 mx-2"
+            style={{ 
+              backgroundColor: 'var(--surface)',
+              boxShadow: 'var(--surface-shadow)',
+            }}
+          >
+            <View className="flex-row items-center">
+              <View 
+                className="w-10 h-10 rounded-full items-center justify-center"
+                style={{ backgroundColor: 'rgba(108, 99, 255, 0.12)' }}
+              >
+                <FontAwesome6 name="circle-info" size={18} color="#6C63FF" />
+              </View>
+              <View className="ml-3 flex-1">
+                <Text className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>
+                  温馨提示
+                </Text>
+                <Text className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>
+                  点击卡片进入对应功能，管理员可登录管理内容
+                </Text>
+              </View>
+            </View>
+          </View>
         </View>
       </View>
     </Screen>

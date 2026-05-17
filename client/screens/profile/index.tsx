@@ -39,129 +39,258 @@ export default function ProfileScreen() {
 
   return (
     <Screen>
-      <View className="flex-1 bg-gray-50">
-        {/* 顶部标题 */}
-        <View className="bg-white px-5 pt-12 pb-4 border-b border-gray-100">
-          <Text className="text-gray-900 text-xl font-bold">我的</Text>
+      <View className="flex-1" style={{ backgroundColor: 'var(--background)' }}>
+        {/* 顶部渐变背景 */}
+        <View 
+          className="px-6 pt-14 pb-8"
+          style={{ 
+            background: 'linear-gradient(135deg, #667EEA 0%, #764BA2 100%)',
+            borderBottomLeftRadius: 32,
+            borderBottomRightRadius: 32,
+          }}
+        >
+          <Text className="text-white text-2xl font-bold">我的</Text>
+          <Text className="text-white/70 text-sm mt-1">欢迎使用学生会APP</Text>
         </View>
 
-        <View className="flex-1 px-4 py-6">
+        <View className="flex-1 px-4 -mt-6">
           {/* 用户信息卡片 */}
-          <Card className="bg-white rounded-2xl p-5 mb-4 shadow-sm border border-gray-100">
-            <View className="flex-row items-center">
-              <View className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 items-center justify-center">
-                <Text className="text-white text-2xl font-bold">
-                  {user ? user.username[0].toUpperCase() : '游'}
-                </Text>
+          <Card
+            className="mb-4 overflow-hidden"
+            style={{ 
+              backgroundColor: 'var(--surface)',
+              borderRadius: 20,
+              boxShadow: 'var(--surface-shadow)',
+            }}
+          >
+            <View className="p-5 flex-row items-center">
+              <View 
+                className="w-16 h-16 rounded-full items-center justify-center"
+                style={{ 
+                  background: user 
+                    ? 'linear-gradient(135deg, #667EEA 0%, #764BA2 100%)'
+                    : 'linear-gradient(135deg, #B8B8B8 0%, #9B9B9B 100%)'
+                }}
+              >
+                <FontAwesome6 name="user" size={28} color="white" />
               </View>
               <View className="ml-4 flex-1">
-                <Text className="text-gray-800 font-bold text-lg">
+                <Text className="font-bold text-lg" style={{ color: 'var(--foreground)' }}>
                   {user ? user.username : '游客用户'}
                 </Text>
-                <Text className="text-gray-400 text-sm mt-0.5">
-                  {user ? '学生会管理员' : '点击登录管理内容'}
-                </Text>
+                <View className="flex-row items-center mt-1">
+                  <View 
+                    className="px-2 py-0.5 rounded-full"
+                    style={{ backgroundColor: user ? 'rgba(102, 126, 234, 0.15)' : 'rgba(156, 163, 175, 0.15)' }}
+                  >
+                    <Text 
+                      className="text-xs font-medium"
+                      style={{ color: user ? '#667EEA' : '#9B9B9B' }}
+                    >
+                      {user ? '管理员' : '普通用户'}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+              {!user && (
+                <Link href="/login" asChild>
+                  <Button 
+                    size="sm"
+                    style={{ backgroundColor: '#667EEA', borderRadius: 12 }}
+                  >
+                    <Text className="text-white text-sm font-medium">登录</Text>
+                  </Button>
+                </Link>
+              )}
+            </View>
+          </Card>
+
+          {/* 数据统计卡片 */}
+          <Card
+            className="mb-4 overflow-hidden"
+            style={{ 
+              backgroundColor: 'var(--surface)',
+              borderRadius: 20,
+              boxShadow: 'var(--surface-shadow)',
+            }}
+          >
+            <View className="p-4">
+              <Text className="font-medium text-sm mb-3" style={{ color: 'var(--muted)' }}>
+                内容统计
+              </Text>
+              <View className="flex-row justify-between">
+                <View className="items-center flex-1">
+                  <View 
+                    className="w-12 h-12 rounded-2xl items-center justify-center mb-2"
+                    style={{ backgroundColor: 'rgba(102, 126, 234, 0.12)' }}
+                  >
+                    <FontAwesome6 name="bell" size={20} color="#667EEA" />
+                  </View>
+                  <Text className="font-bold text-xl" style={{ color: 'var(--foreground)' }}>
+                    {stats.notifications}
+                  </Text>
+                  <Text className="text-xs" style={{ color: 'var(--muted)' }}>通知</Text>
+                </View>
+                <View className="items-center flex-1">
+                  <View 
+                    className="w-12 h-12 rounded-2xl items-center justify-center mb-2"
+                    style={{ backgroundColor: 'rgba(255, 140, 0, 0.12)' }}
+                  >
+                    <FontAwesome6 name="calendar-plus" size={20} color="#FF8C00" />
+                  </View>
+                  <Text className="font-bold text-xl" style={{ color: 'var(--foreground)' }}>
+                    {stats.activities}
+                  </Text>
+                  <Text className="text-xs" style={{ color: 'var(--muted)' }}>活动</Text>
+                </View>
+                <View className="items-center flex-1">
+                  <View 
+                    className="w-12 h-12 rounded-2xl items-center justify-center mb-2"
+                    style={{ backgroundColor: 'rgba(17, 153, 142, 0.12)' }}
+                  >
+                    <FontAwesome6 name="futbol" size={20} color="#11998E" />
+                  </View>
+                  <Text className="font-bold text-xl" style={{ color: 'var(--foreground)' }}>
+                    {stats.matches}
+                  </Text>
+                  <Text className="text-xs" style={{ color: 'var(--muted)' }}>赛程</Text>
+                </View>
               </View>
             </View>
           </Card>
 
           {/* 功能入口 */}
-          <Card className="bg-white rounded-2xl p-4 mb-4 shadow-sm border border-gray-100">
-            <Text className="text-gray-700 font-medium text-sm mb-3">快捷功能</Text>
-            
-            <View className="space-y-2">
-              <Link href="/notifications" asChild>
-                <Button variant="ghost" className="justify-start px-2 py-3 h-auto">
-                  <View className="flex-row items-center w-full">
-                    <View className="w-10 h-10 rounded-xl bg-blue-50 items-center justify-center mr-3">
-                      <Text className="text-blue-500 text-sm font-bold">通知</Text>
+          <Card
+            className="mb-4 overflow-hidden"
+            style={{ 
+              backgroundColor: 'var(--surface)',
+              borderRadius: 20,
+              boxShadow: 'var(--surface-shadow)',
+            }}
+          >
+            <View className="p-4">
+              <Text className="font-medium text-sm mb-3" style={{ color: 'var(--muted)' }}>
+                快捷功能
+              </Text>
+              
+              <View>
+                <Link href="/notifications" asChild>
+                  <View className="flex-row items-center py-3 px-2 rounded-xl" style={{ backgroundColor: 'var(--background)' }}>
+                    <View 
+                      className="w-11 h-11 rounded-xl items-center justify-center"
+                      style={{ backgroundColor: 'rgba(102, 126, 234, 0.12)' }}
+                    >
+                      <FontAwesome6 name="bell" size={18} color="#667EEA" />
                     </View>
-                    <Text className="text-gray-700 flex-1 text-left">学生会通知</Text>
-                    <Text className="text-gray-400 text-sm mr-2">{stats.notifications}条</Text>
-                    <Text className="text-gray-300">›</Text>
+                    <View className="ml-3 flex-1">
+                      <Text className="font-medium" style={{ color: 'var(--foreground)' }}>学生会通知</Text>
+                      <Text className="text-xs" style={{ color: 'var(--muted)' }}>查看最新通知公告</Text>
+                    </View>
+                    <Text style={{ color: 'var(--muted)' }}>{'>'}</Text>
                   </View>
-                </Button>
-              </Link>
+                </Link>
 
-              <Link href="/activities" asChild>
-                <Button variant="ghost" className="justify-start px-2 py-3 h-auto">
-                  <View className="flex-row items-center w-full">
-                    <View className="w-10 h-10 rounded-xl bg-orange-50 items-center justify-center mr-3">
-                      <Text className="text-orange-500 text-sm font-bold">活动</Text>
+                <Link href="/activities" asChild>
+                  <View className="flex-row items-center py-3 px-2 mt-2 rounded-xl" style={{ backgroundColor: 'var(--background)' }}>
+                    <View 
+                      className="w-11 h-11 rounded-xl items-center justify-center"
+                      style={{ backgroundColor: 'rgba(255, 140, 0, 0.12)' }}
+                    >
+                      <FontAwesome6 name="calendar-plus" size={18} color="#FF8C00" />
                     </View>
-                    <Text className="text-gray-700 flex-1 text-left">活动通知</Text>
-                    <Text className="text-gray-400 text-sm mr-2">{stats.activities}条</Text>
-                    <Text className="text-gray-300">›</Text>
+                    <View className="ml-3 flex-1">
+                      <Text className="font-medium" style={{ color: 'var(--foreground)' }}>活动通知</Text>
+                      <Text className="text-xs" style={{ color: 'var(--muted)' }}>查看近期活动</Text>
+                    </View>
+                    <Text style={{ color: 'var(--muted)' }}>{'>'}</Text>
                   </View>
-                </Button>
-              </Link>
+                </Link>
 
-              <Link href="/schedule" asChild>
-                <Button variant="ghost" className="justify-start px-2 py-3 h-auto">
-                  <View className="flex-row items-center w-full">
-                    <View className="w-10 h-10 rounded-xl bg-green-50 items-center justify-center mr-3">
-                      <Text className="text-green-500 text-sm font-bold">赛程</Text>
+                <Link href="/schedule" asChild>
+                  <View className="flex-row items-center py-3 px-2 mt-2 rounded-xl" style={{ backgroundColor: 'var(--background)' }}>
+                    <View 
+                      className="w-11 h-11 rounded-xl items-center justify-center"
+                      style={{ backgroundColor: 'rgba(17, 153, 142, 0.12)' }}
+                    >
+                      <FontAwesome6 name="futbol" size={18} color="#11998E" />
                     </View>
-                    <Text className="text-gray-700 flex-1 text-left">足联篮联赛程</Text>
-                    <Text className="text-gray-400 text-sm mr-2">{stats.matches}场</Text>
-                    <Text className="text-gray-300">›</Text>
+                    <View className="ml-3 flex-1">
+                      <Text className="font-medium" style={{ color: 'var(--foreground)' }}>足联篮联赛程</Text>
+                      <Text className="text-xs" style={{ color: 'var(--muted)' }}>查看比赛安排</Text>
+                    </View>
+                    <Text style={{ color: 'var(--muted)' }}>{'>'}</Text>
                   </View>
-                </Button>
-              </Link>
+                </Link>
 
-              <Link href="/feedback" asChild>
-                <Button variant="ghost" className="justify-start px-2 py-3 h-auto">
-                  <View className="flex-row items-center w-full">
-                    <View className="w-10 h-10 rounded-xl bg-purple-50 items-center justify-center mr-3">
-                      <FontAwesome6 name="comment" size={18} color="#a855f7" />
+                <Link href="/feedback" asChild>
+                  <View className="flex-row items-center py-3 px-2 mt-2 rounded-xl" style={{ backgroundColor: 'var(--background)' }}>
+                    <View 
+                      className="w-11 h-11 rounded-xl items-center justify-center"
+                      style={{ backgroundColor: 'rgba(168, 85, 247, 0.12)' }}
+                    >
+                      <FontAwesome6 name="comment" size={18} color="#A855F7" />
                     </View>
-                    <Text className="text-gray-700 flex-1 text-left">意见反馈</Text>
-                    <Text className="text-gray-300">›</Text>
+                    <View className="ml-3 flex-1">
+                      <Text className="font-medium" style={{ color: 'var(--foreground)' }}>意见反馈</Text>
+                      <Text className="text-xs" style={{ color: 'var(--muted)' }}>提交您的建议</Text>
+                    </View>
+                    <Text style={{ color: 'var(--muted)' }}>{'>'}</Text>
                   </View>
-                </Button>
-              </Link>
+                </Link>
+              </View>
             </View>
           </Card>
 
-          {/* 管理员入口 */}
-          <Card className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-            <Text className="text-gray-700 font-medium text-sm mb-3">管理功能</Text>
-            
-            {user ? (
-              <View className="space-y-2">
-                <Link href="/manage" asChild>
-                  <Button variant="ghost" className="justify-start px-2 py-3 h-auto">
-                    <View className="flex-row items-center w-full">
-                      <View className="w-10 h-10 rounded-xl bg-red-50 items-center justify-center mr-3">
-                        <FontAwesome6 name="gear" size={18} color="#ef4444" />
-                      </View>
-                      <Text className="text-gray-700 flex-1 text-left">内容管理</Text>
-                      <Text className="text-gray-300">›</Text>
-                    </View>
-                  </Button>
-                </Link>
+          {/* 管理员功能 */}
+          {user && (
+            <Card
+              className="mb-4 overflow-hidden"
+              style={{ 
+                backgroundColor: 'var(--surface)',
+                borderRadius: 20,
+                boxShadow: 'var(--surface-shadow)',
+              }}
+            >
+              <View className="p-4">
+                <Text className="font-medium text-sm mb-3" style={{ color: 'var(--muted)' }}>
+                  管理功能
+                </Text>
                 
-                <Button
-                  variant="ghost"
-                  onPress={logout}
-                  className="justify-start px-2 py-3 h-auto"
-                >
-                  <View className="flex-row items-center w-full">
-                    <View className="w-10 h-10 rounded-xl bg-gray-100 items-center justify-center mr-3">
-                      <FontAwesome6 name="door-open" size={18} color="#6b7280" />
+                <Link href="/manage" asChild>
+                  <View className="flex-row items-center py-3 px-2 rounded-xl" style={{ backgroundColor: 'var(--background)' }}>
+                    <View 
+                      className="w-11 h-11 rounded-xl items-center justify-center"
+                      style={{ backgroundColor: 'rgba(239, 68, 68, 0.12)' }}
+                    >
+                      <FontAwesome6 name="pen-to-square" size={18} color="#EF4444" />
                     </View>
-                    <Text className="text-gray-500 flex-1 text-left">退出登录</Text>
+                    <View className="ml-3 flex-1">
+                      <Text className="font-medium" style={{ color: 'var(--foreground)' }}>内容管理</Text>
+                      <Text className="text-xs" style={{ color: 'var(--muted)' }}>管理通知、活动、赛程</Text>
+                    </View>
+                    <Text style={{ color: 'var(--muted)' }}>{'>'}</Text>
                   </View>
-                </Button>
+                </Link>
+
+                <View 
+                  onTouchEnd={logout}
+                  className="flex-row items-center py-3 px-2 mt-2 rounded-xl"
+                  style={{ backgroundColor: 'var(--background)' }}
+                >
+                  <View 
+                    className="w-11 h-11 rounded-xl items-center justify-center"
+                    style={{ backgroundColor: 'rgba(156, 163, 175, 0.12)' }}
+                  >
+                    <FontAwesome6 name="arrow-right-from-bracket" size={18} color="#9B9B9B" />
+                  </View>
+                  <View className="ml-3 flex-1">
+                    <Text className="font-medium" style={{ color: '#EF4444' }}>退出登录</Text>
+                    <Text className="text-xs" style={{ color: 'var(--muted)' }}>切换账号</Text>
+                  </View>
+                </View>
               </View>
-            ) : (
-              <Link href="/login" asChild>
-                <Button variant="solid" className="bg-blue-500 py-3 rounded-xl">
-                  <Text className="text-white font-medium">管理员登录</Text>
-                </Button>
-              </Link>
-            )}
-          </Card>
+            </Card>
+          )}
         </View>
       </View>
     </Screen>

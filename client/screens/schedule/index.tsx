@@ -2,9 +2,10 @@
 
 import { useState, useCallback } from 'react';
 import { Screen } from '@/components/Screen';
-import { Card, Text, View, Badge, Button } from '@/components/ui';
+import { Card, Text, View, Button } from '@/components/ui';
 import { useFocusEffect } from 'expo-router';
 import { api, initStorage } from '@/utils/storage';
+import { FontAwesome6 } from '@expo/vector-icons';
 
 interface Match {
   id: number;
@@ -29,7 +30,7 @@ export default function ScheduleScreen() {
     try {
       const response = await api.getMatches();
       if (response.code === 0) {
-        setMatches(response.data as Match[]);
+        setMatches(response.data as unknown as Match[]);
       }
     } catch (error) {
       console.error('Failed to fetch matches:', error);
@@ -64,119 +65,222 @@ export default function ScheduleScreen() {
     return `${hours}:${minutes}`;
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusInfo = (status: string) => {
     if (status === 'completed') {
-      return <Badge className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs">已结束</Badge>;
+      return { text: '已结束', color: '#00B894', bgColor: 'rgba(0, 184, 148, 0.12)' };
     }
     if (status === 'live') {
-      return <Badge className="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs">进行中</Badge>;
+      return { text: '进行中', color: '#FF6B6B', bgColor: 'rgba(255, 107, 107, 0.12)' };
     }
-    return <Badge className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs">未开始</Badge>;
+    return { text: '未开始', color: '#6C63FF', bgColor: 'rgba(108, 99, 255, 0.12)' };
   };
 
-  const getLeagueIcon = (league: string) => {
-    return league.includes('篮球') ? '篮球' : '足球';
-  };
-
-  const getLeagueColor = (league: string) => {
-    return league.includes('篮球') ? 'bg-orange-500' : 'bg-emerald-500';
-  };
+  const isBasketball = (league: string) => league.includes('篮球');
+  const isFootball = (league: string) => league.includes('足球');
 
   return (
     <Screen>
-      <View className="flex-1 bg-gray-50">
+      <View className="flex-1" style={{ backgroundColor: 'var(--background)' }}>
         {/* 顶部标题 */}
-        <View className="bg-white px-5 pt-12 pb-4 border-b border-gray-100">
-          <Text className="text-gray-900 text-xl font-bold">足联篮联赛程</Text>
-          <Text className="text-gray-400 text-sm mt-0.5">
-            {loading ? '加载中...' : `共 ${matches.length} 场比赛`}
-          </Text>
+        <View 
+          className="px-6 pt-14 pb-6"
+          style={{ 
+            background: 'linear-gradient(135deg, #11998E 0%, #38EF7D 100%)',
+            borderBottomLeftRadius: 32,
+            borderBottomRightRadius: 32,
+          }}
+        >
+          <Text className="text-white text-2xl font-bold">足联篮联赛程</Text>
+          <View className="flex-row items-center mt-2">
+            <FontAwesome6 name="futbol" size={14} color="rgba(255,255,255,0.8)" />
+            <Text className="text-white/80 text-sm ml-2">
+              {loading ? '加载中...' : `共 ${matches.length} 场精彩对决`}
+            </Text>
+          </View>
         </View>
 
         {/* 筛选按钮 */}
-        <View className="bg-white px-4 py-3 border-b border-gray-100">
-          <View className="flex-row bg-gray-100 rounded-xl p-1">
-            {(['全部', '足球联赛', '篮球联赛'] as LeagueFilter[]).map((filter) => (
-              <Button
-                key={filter}
-                onPress={() => setActiveFilter(filter)}
-                className={`flex-1 py-2 px-3 rounded-lg ${
-                  activeFilter === filter ? 'bg-white shadow-sm' : 'bg-transparent'
-                }`}
-              >
-                <Text
-                  className={`text-sm font-medium text-center ${
-                    activeFilter === filter ? 'text-blue-600' : 'text-gray-500'
-                  }`}
+        <View className="px-4 py-4">
+          <View 
+            className="flex-row p-1.5 rounded-2xl"
+            style={{ backgroundColor: 'var(--surface)' }}
+          >
+            {(['全部', '足球联赛', '篮球联赛'] as LeagueFilter[]).map((filter) => {
+              const isActive = activeFilter === filter;
+              const icon = filter === '全部' ? 'list' : isBasketball(filter) ? 'basketball' : 'futbol';
+              
+              return (
+                <View
+                  key={filter}
+                  onTouchEnd={() => setActiveFilter(filter)}
+                  className="flex-1 py-2.5 px-2 rounded-xl items-center"
+                  style={{
+                    backgroundColor: isActive ? 'rgba(17, 153, 142, 0.12)' : 'transparent',
+                  }}
                 >
-                  {filter}
-                </Text>
-              </Button>
-            ))}
+                  <FontAwesome6 
+                    name={icon as any} 
+                    size={14} 
+                    color={isActive ? '#11998E' : 'var(--muted)'} 
+                  />
+                  <Text 
+                    className="text-xs font-medium mt-1.5"
+                    style={{ color: isActive ? '#11998E' : 'var(--muted)' }}
+                  >
+                    {filter}
+                  </Text>
+                </View>
+              );
+            })}
           </View>
         </View>
 
         {/* 赛程列表 */}
-        <View className="flex-1 px-4 py-4">
+        <View className="flex-1 px-4 pb-4">
           {loading ? (
             <View className="flex-1 items-center justify-center">
-              <Text className="text-gray-400">加载中...</Text>
+              <View 
+                className="w-16 h-16 rounded-full items-center justify-center"
+                style={{ backgroundColor: 'rgba(17, 153, 142, 0.12)' }}
+              >
+                <FontAwesome6 name="spinner" size={24} color="#11998E" />
+              </View>
+              <Text className="mt-4" style={{ color: 'var(--muted)' }}>加载中...</Text>
             </View>
           ) : filteredMatches.length === 0 ? (
             <View className="flex-1 items-center justify-center">
-              <Text className="text-gray-400">暂无赛程</Text>
+              <View 
+                className="w-20 h-20 rounded-full items-center justify-center mb-4"
+                style={{ backgroundColor: 'rgba(17, 153, 142, 0.08)' }}
+              >
+                <FontAwesome6 name="calendar-xmark" size={32} color="#11998E" />
+              </View>
+              <Text className="text-lg font-medium" style={{ color: 'var(--muted)' }}>暂无赛程</Text>
+              <Text className="text-sm mt-1" style={{ color: 'var(--muted)' }}>敬请期待更多精彩比赛</Text>
             </View>
           ) : (
-            filteredMatches.map((item, index) => (
-              <Card key={item.id} className="mb-3 bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100">
-                {/* 联赛标签 */}
-                <View className={`${getLeagueColor(item.league)} px-3 py-1.5 flex-row items-center`}>
-                  <Text className="text-white text-sm mr-1">{getLeagueIcon(item.league)}</Text>
-                  <Text className="text-white text-xs font-medium">{item.league}</Text>
-                </View>
+            filteredMatches.map((item) => {
+              const statusInfo = getStatusInfo(item.status);
+              const isBasket = isBasketball(item.league);
+              
+              return (
+                <Card
+                  key={item.id}
+                  className="mb-4 overflow-hidden"
+                  style={{ 
+                    backgroundColor: 'var(--surface)',
+                    borderRadius: 20,
+                    boxShadow: 'var(--surface-shadow)',
+                  }}
+                >
+                  {/* 联赛标签 */}
+                  <View 
+                    className="px-4 py-2.5 flex-row items-center"
+                    style={{ 
+                      background: isBasket 
+                        ? 'linear-gradient(90deg, #FF8C00 0%, #FFA500 100%)'
+                        : 'linear-gradient(90deg, #11998E 0%, #38EF7D 100%)',
+                    }}
+                  >
+                    <FontAwesome6 
+                      name={isBasket ? 'basketball' : 'futbol'} 
+                      size={14} 
+                      color="white" 
+                    />
+                    <Text className="text-white text-sm font-medium ml-2">
+                      {item.league}
+                    </Text>
+                  </View>
 
-                <View className="p-4">
-                  {/* 对阵双方 */}
-                  <View className="flex-row items-center justify-between mb-3">
-                    <View className="flex-1 items-center">
-                      <Text className="text-gray-800 font-bold text-base">{item.home_team}</Text>
-                    </View>
-                    
-                    <View className="px-4">
-                      {item.home_score !== null && item.away_score !== null ? (
-                        <View className="bg-gray-100 rounded-lg px-3 py-1">
-                          <Text className="text-gray-700 font-bold text-lg">
-                            {item.home_score} - {item.away_score}
+                  <View className="p-4">
+                    {/* 对阵双方 */}
+                    <View className="flex-row items-center justify-between mb-4">
+                      <View className="flex-1 items-center">
+                        <View 
+                          className="w-12 h-12 rounded-full items-center justify-center mb-2"
+                          style={{ backgroundColor: 'rgba(17, 153, 142, 0.12)' }}
+                        >
+                          <FontAwesome6 name="shield-halved" size={20} color="#11998E" />
+                        </View>
+                        <Text 
+                          className="font-bold text-sm text-center leading-tight"
+                          style={{ color: 'var(--foreground)' }}
+                        >
+                          {item.home_team}
+                        </Text>
+                      </View>
+                      
+                      <View className="px-4 items-center">
+                        {item.home_score !== null && item.away_score !== null ? (
+                          <View 
+                            className="rounded-2xl px-4 py-2"
+                            style={{ backgroundColor: 'var(--background)' }}
+                          >
+                            <Text className="font-bold text-xl" style={{ color: 'var(--foreground)' }}>
+                              {item.home_score} - {item.away_score}
+                            </Text>
+                          </View>
+                        ) : (
+                          <Text className="text-2xl font-bold" style={{ color: 'var(--muted)' }}>
+                            VS
+                          </Text>
+                        )}
+                        <View 
+                          className="mt-2 px-3 py-1 rounded-full"
+                          style={{ backgroundColor: statusInfo.bgColor }}
+                        >
+                          <Text className="text-xs font-medium" style={{ color: statusInfo.color }}>
+                            {statusInfo.text}
                           </Text>
                         </View>
-                      ) : (
-                        <Text className="text-gray-400 text-lg">VS</Text>
-                      )}
+                      </View>
+                      
+                      <View className="flex-1 items-center">
+                        <View 
+                          className="w-12 h-12 rounded-full items-center justify-center mb-2"
+                          style={{ backgroundColor: isBasket ? 'rgba(255, 140, 0, 0.12)' : 'rgba(56, 239, 125, 0.12)' }}
+                        >
+                          <FontAwesome6 name="shield-halved" size={20} color={isBasket ? '#FF8C00' : '#38EF7D'} />
+                        </View>
+                        <Text 
+                          className="font-bold text-sm text-center leading-tight"
+                          style={{ color: 'var(--foreground)' }}
+                        >
+                          {item.away_team}
+                        </Text>
+                      </View>
                     </View>
-                    
-                    <View className="flex-1 items-center">
-                      <Text className="text-gray-800 font-bold text-base">{item.away_team}</Text>
-                    </View>
-                  </View>
 
-                  {/* 比赛信息 */}
-                  <View className="flex-row items-center justify-between pt-3 border-t border-gray-100">
-                    <View className="flex-row items-center">
-                      <Text className="text-gray-400 text-xs">日期 {formatDate(item.match_time)}</Text>
-                      <Text className="text-blue-500 text-xs ml-3 font-medium">
-                        时间 {formatTime(item.match_time)}
-                      </Text>
+                    {/* 比赛信息卡片 */}
+                    <View 
+                      className="rounded-2xl p-3"
+                      style={{ backgroundColor: 'var(--background)' }}
+                    >
+                      <View className="flex-row items-center">
+                        <View className="flex-row items-center flex-1">
+                          <FontAwesome6 name="calendar-day" size={12} color="var(--muted)" />
+                          <Text className="text-xs ml-2" style={{ color: 'var(--muted)' }}>
+                            {formatDate(item.match_time)}
+                          </Text>
+                        </View>
+                        <View className="flex-row items-center flex-1">
+                          <FontAwesome6 name="clock" size={12} color="var(--muted)" />
+                          <Text className="text-xs ml-2 font-medium" style={{ color: '#11998E' }}>
+                            {formatTime(item.match_time)}
+                          </Text>
+                        </View>
+                      </View>
+                      <View className="flex-row items-center mt-2">
+                        <FontAwesome6 name="location-dot" size={12} color="var(--muted)" />
+                        <Text className="text-xs ml-2" style={{ color: 'var(--muted)' }}>
+                          {item.venue}
+                        </Text>
+                      </View>
                     </View>
-                    {getStatusBadge(item.status)}
                   </View>
-
-                  {/* 场地 */}
-                  <View className="flex-row items-center mt-2">
-                    <Text className="text-gray-400 text-xs">地点 {item.venue}</Text>
-                  </View>
-                </View>
-              </Card>
-            ))
+                </Card>
+              );
+            })
           )}
         </View>
       </View>
