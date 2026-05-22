@@ -1,8 +1,5 @@
-'use client';
-
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { api } from '@/utils/storage';
 
 interface User {
   username: string;
@@ -12,80 +9,99 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  isAuthenticated: boolean;
+  token: string | null;
   isLoading: boolean;
+  isAuthenticated: boolean;
   login: (username: string, password: string) => Promise<{ success: boolean; message: string }>;
   logout: () => Promise<void>;
-  checkAuth: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const AUTH_STORAGE_KEY = 'student_union_auth';
+const TOKEN_KEY = '@student_union_token';
+const USER_KEY = '@student_union_user';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 检查登录状态
-  const checkAuth = useCallback(async () => {
+  useEffect(() => {
+    loadStoredAuth();
+  }, []);
+
+  const loadStoredAuth = async () => {
     try {
-      const stored = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
-      if (stored) {
-        const { user: storedUser, exp } = JSON.parse(stored);
-        if (exp > Date.now()) {
-          setUser(storedUser);
-        } else {
-          await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
+      const storedToken = await AsyncStorage.getItem(TOKEN_KEY);
+      const storedUser = await AsyncStorage.getItem(USER_KEY);
+      
+      if (storedToken && storedUser) {
+        // 验证token是否过期
+        try {
+          const payload = JSON.parse(atob(storedToken));
+          if (payload.exp > Date.now()) {
+            setToken(storedToken);
+            setUser(JSON.parse(storedUser));
+          } else {
+            // token过期，清除
+            await AsyncStorage.removeItem(TOKEN_KEY);
+            await AsyncStorage.removeItem(USER_KEY);
+          }
+        } catch {
+          await AsyncStorage.removeItem(TOKEN_KEY);
+          await AsyncStorage.removeItem(USER_KEY);
         }
       }
-    } catch (error) {
-      console.error('检查登录状态失败:', error);
+    } catch (e) {
+      console.log('Load auth failed:', e);
     } finally {
       setIsLoading(false);
     }
-  }, []);
-
-  useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
-
-  // 登录
-  const login = async (username: string, password: string) => {
-    try {
-      const response = await api.login(username, password);
-      
-      if (response.code === 0 && response.data) {
-        const userData = response.data.user || { username, name: username, role: 'admin' };
-        const tokenData = response.data.token || '';
-        
-        // 保存登录状态
-        const authData = {
-          user: userData,
-          token: tokenData,
-          exp: Date.now() + 86400000, // 24小时后过期
-        };
-        await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authData));
-        
-        setUser(userData);
-        return { success: true, message: '登录成功' };
-      }
-      
-      return { success: false, message: response.message || '登录失败' };
-    } catch (error) {
-      console.error('登录失败:', error);
-      return { success: false, message: '网络错误，请稍后重试' };
-    }
   };
 
-  // 退出登录
+  const login = async (username: string, password: string) => {
+    const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL || 'http://localhost:9091';
+    const url = `${baseUrl}/api/v1/auth/login`;
+    
+    // 重试机制：最多3次
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+        });
+        
+        const data = await response.json();
+        
+        if (data.code === 0) {
+          await AsyncStorage.setItem(TOKEN_KEY, data.data.token);
+          await AsyncStorage.setItem(USER_KEY, JSON.stringify(data.data.user));
+          setToken(data.data.token);
+          setUser(data.data.user);
+          return { success: true, message: '登录成功' };
+        } else {
+          return { success: false, message: data.message || '登录失败' };
+        }
+      } catch (e) {
+        console.log(`Login attempt ${attempt} failed:`, e);
+        if (attempt < 3) {
+          await new Promise(resolve => setTimeout(resolve, 500)); // 等待500ms后重试
+        }
+      }
+    }
+    
+    return { success: false, message: '网络错误，请检查网络连接后重试' };
+  };
+
   const logout = async () => {
     try {
-      await api.logout();
-      await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
+      await AsyncStorage.removeItem(TOKEN_KEY);
+      await AsyncStorage.removeItem(USER_KEY);
+      setToken(null);
       setUser(null);
-    } catch (error) {
-      console.error('退出登录失败:', error);
+    } catch (e) {
+      console.log('Logout failed:', e);
     }
   };
 
@@ -93,11 +109,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{
         user,
-        isAuthenticated: !!user,
+        token,
         isLoading,
+        isAuthenticated: !!token,
         login,
         logout,
-        checkAuth,
       }}
     >
       {children}
@@ -111,4 +127,11 @@ export function useAuth() {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
+}
+
+export function getAuthHeaders() {
+  return {
+    'Authorization': `Bearer ${useAuth().token}`,
+    'Content-Type': 'application/json',
+  };
 }

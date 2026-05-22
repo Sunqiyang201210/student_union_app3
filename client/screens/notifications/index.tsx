@@ -1,10 +1,7 @@
-'use client';
-
-import { useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { Screen } from '@/components/Screen';
-import { Card, Text, View } from '@/components/ui';
 import { useFocusEffect } from 'expo-router';
-import { api, initStorage } from '@/utils/storage';
 import { FontAwesome6 } from '@expo/vector-icons';
 
 interface Notification {
@@ -16,164 +13,240 @@ interface Notification {
   published_at: string;
 }
 
+const getTypeIcon = (type: string) => {
+  switch (type) {
+    case 'meeting': return 'users';
+    case 'recruit': return 'user-plus';
+    case 'activity': return 'calendar-star';
+    default: return 'bell';
+  }
+};
+
+const getTypeColor = (type: string) => {
+  switch (type) {
+    case 'meeting': return '#6C63FF';
+    case 'recruit': return '#00B894';
+    case 'activity': return '#FF6584';
+    default: return '#6C63FF';
+  }
+};
+
+const getPriorityBadge = (priority: string) => {
+  if (priority === 'high') {
+    return { text: '重要', color: '#FF6B6B', bg: 'rgba(255, 107, 107, 0.12)' };
+  }
+  return null;
+};
+
 export default function NotificationsScreen() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const fetchNotifications = useCallback(async () => {
+  const fetchNotifications = async (retries = 3) => {
     try {
-      const response = await api.getNotifications();
-      if (response.code === 0) {
-        setNotifications(response.data);
+      const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL || 'http://localhost:9091';
+      const response = await fetch(`${baseUrl}/api/v1/notifications`, {
+        signal: AbortSignal.timeout(5000),
+      });
+      
+      if (!response.ok) throw new Error('Network response not ok');
+      
+      const data = await response.json();
+      if (data.code === 0) {
+        setNotifications(Array.isArray(data.data) ? data.data : []);
       }
-    } catch (error) {
-      console.error('Failed to fetch notifications:', error);
+    } catch (e) {
+      if (retries > 0) {
+        await new Promise(r => setTimeout(r, 500));
+        return fetchNotifications(retries - 1);
+      }
+      console.log('Failed to fetch notifications after retries');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  }, []);
+  };
 
   useFocusEffect(
     useCallback(() => {
-      initStorage();
       fetchNotifications();
-    }, [fetchNotifications])
+    }, [])
   );
 
-  const getTypeConfig = (type: string) => {
-    const configs: Record<string, { label: string; bg: string; color: string; icon: string }> = {
-      meeting: { label: '会议', bg: 'rgba(108, 99, 255, 0.12)', color: '#6C63FF', icon: 'users' },
-      recruit: { label: '招募', bg: 'rgba(0, 184, 148, 0.12)', color: '#00B894', icon: 'hand-holding-heart' },
-      notice: { label: '通知', bg: 'rgba(253, 203, 110, 0.12)', color: '#FDCB6E', icon: 'bell' },
-      activity: { label: '活动', bg: 'rgba(255, 101, 132, 0.12)', color: '#FF6584', icon: 'party-bell' },
-    };
-    return configs[type] || configs.notice;
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchNotifications();
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return `${date.getMonth() + 1}月${date.getDate()}日 ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    
+    if (days === 0) return '今天';
+    if (days === 1) return '昨天';
+    if (days < 7) return `${days}天前`;
+    return `${date.getMonth() + 1}/${date.getDate()}`;
+  };
+
+  const NoticeCard = ({ item }: { item: Notification }) => {
+    const priorityBadge = getPriorityBadge(item.priority);
+    const iconColor = getTypeColor(item.type);
+    
+    return (
+      <View style={styles.cardOuter}>
+        <View style={styles.cardInner}>
+          <View style={[styles.iconContainer, { backgroundColor: `${iconColor}1A` }]}>
+            <FontAwesome6 name={getTypeIcon(item.type) as any} size={22} color={iconColor} />
+          </View>
+          <View style={styles.cardContentContainer}>
+            <View style={styles.titleRow}>
+              <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
+              {priorityBadge && (
+                <View style={[styles.priorityBadge, { backgroundColor: priorityBadge.bg }]}>
+                  <Text style={[styles.priorityText, { color: priorityBadge.color }]}>
+                    {priorityBadge.text}
+                  </Text>
+                </View>
+              )}
+            </View>
+            <Text style={styles.cardContent} numberOfLines={2}>{item.content}</Text>
+            <Text style={styles.cardDate}>{formatDate(item.published_at)}</Text>
+          </View>
+        </View>
+      </View>
+    );
   };
 
   return (
     <Screen>
-      <View className="flex-1" style={{ backgroundColor: 'var(--background)' }}>
-        {/* 顶部标题 */}
-        <View 
-          className="px-6 pt-14 pb-6"
-          style={{ 
-            background: 'linear-gradient(135deg, #6C63FF 0%, #896BFF 100%)',
-            borderBottomLeftRadius: 32,
-            borderBottomRightRadius: 32,
-          }}
-        >
-          <Text className="text-white text-2xl font-bold">学生会通知</Text>
-          <View className="flex-row items-center mt-2">
-            <FontAwesome6 name="bullhorn" size={14} color="rgba(255,255,255,0.8)" />
-            <Text className="text-white/80 text-sm ml-2">
-              {loading ? '加载中...' : `共 ${notifications.length} 条通知`}
-            </Text>
-          </View>
-        </View>
-
-        {/* 通知列表 */}
-        <View className="flex-1 px-4 py-5">
-          {loading ? (
-            <View className="flex-1 items-center justify-center">
-              <View 
-                className="w-16 h-16 rounded-full items-center justify-center"
-                style={{ backgroundColor: 'rgba(108, 99, 255, 0.12)' }}
-              >
-                <FontAwesome6 name="spinner" size={24} color="#6C63FF" />
-              </View>
-              <Text className="mt-4" style={{ color: 'var(--muted)' }}>加载中...</Text>
-            </View>
-          ) : notifications.length === 0 ? (
-            <View className="flex-1 items-center justify-center">
-              <View 
-                className="w-20 h-20 rounded-full items-center justify-center mb-4"
-                style={{ backgroundColor: 'rgba(108, 99, 255, 0.08)' }}
-              >
-                <FontAwesome6 name="inbox" size={32} color="#6C63FF" />
-              </View>
-              <Text className="text-lg font-medium" style={{ color: 'var(--muted)' }}>暂无通知</Text>
-              <Text className="text-sm mt-1" style={{ color: 'var(--muted)' }}>稍后再来看看吧</Text>
-            </View>
-          ) : (
-            notifications.map((item, index) => {
-              const typeConfig = getTypeConfig(item.type);
-              return (
-                <Card
-                  key={item.id}
-                  className="mb-4"
-                  style={{ 
-                    backgroundColor: 'var(--surface)',
-                    borderRadius: 20,
-                    boxShadow: 'var(--surface-shadow)',
-                    borderLeftWidth: 4,
-                    borderLeftColor: item.priority === 'high' ? '#FF6584' : typeConfig.color,
-                  }}
-                >
-                  <View className="p-4">
-                    <View className="flex-row justify-between items-start mb-3">
-                      <View className="flex-row items-center flex-1">
-                        <View 
-                          className="w-10 h-10 rounded-xl items-center justify-center"
-                          style={{ backgroundColor: typeConfig.bg }}
-                        >
-                          <FontAwesome6 name={typeConfig.icon as any} size={18} color={typeConfig.color} />
-                        </View>
-                        <View className="ml-3 flex-1">
-                          <Text 
-                            className="font-semibold text-base leading-snug"
-                            style={{ color: 'var(--foreground)' }}
-                            numberOfLines={2}
-                          >
-                            {item.title}
-                          </Text>
-                        </View>
-                      </View>
-                      <View 
-                        className="px-3 py-1 rounded-full ml-2"
-                        style={{ backgroundColor: typeConfig.bg }}
-                      >
-                        <Text 
-                          className="text-xs font-medium"
-                          style={{ color: typeConfig.color }}
-                        >
-                          {typeConfig.label}
-                        </Text>
-                      </View>
-                    </View>
-                    <Text 
-                      className="text-sm leading-relaxed"
-                      style={{ color: 'var(--muted)' }}
-                      numberOfLines={2}
-                    >
-                      {item.content}
-                    </Text>
-                    <View className="flex-row items-center mt-3 pt-3" style={{ borderTopWidth: 1, borderTopColor: 'var(--border)' }}>
-                      <FontAwesome6 name="clock" size={12} color="var(--muted)" />
-                      <Text className="text-xs ml-2" style={{ color: 'var(--muted)' }}>
-                        {formatDate(item.published_at)}
-                      </Text>
-                      {item.priority === 'high' && (
-                        <View 
-                          className="flex-row items-center px-2 py-0.5 rounded-full ml-3"
-                          style={{ backgroundColor: 'rgba(255, 101, 132, 0.12)' }}
-                        >
-                          <FontAwesome6 name="star" size={10} color="#FF6584" />
-                          <Text className="text-xs ml-1 font-medium" style={{ color: '#FF6584' }}>重要</Text>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-                </Card>
-              );
-            })
-          )}
-        </View>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>学生会通知</Text>
+        <Text style={styles.headerSubtitle}>共 {notifications.length} 条通知</Text>
       </View>
+      <ScrollView 
+        style={styles.container} 
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#6C63FF']} />
+        }
+      >
+        {loading ? (
+          <View style={styles.emptyContainer}>
+            <FontAwesome6 name="spinner" size={32} color="#B2BEC3" />
+            <Text style={styles.emptyText}>加载中...</Text>
+          </View>
+        ) : notifications.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <FontAwesome6 name="bell-slash" size={48} color="#B2BEC3" />
+            <Text style={styles.emptyText}>暂无通知</Text>
+          </View>
+        ) : (
+          notifications.map((item) => (
+            <NoticeCard key={item.id} item={item} />
+          ))
+        )}
+        <View style={{ height: 120 }} />
+      </ScrollView>
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F0F0F3',
+  },
+  contentContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 120,
+  },
+  header: {
+    backgroundColor: '#F0F0F3',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 12,
+  },
+  headerTitle: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#2D3436',
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    color: '#636E72',
+    marginTop: 4,
+  },
+  cardOuter: {
+    marginBottom: 16,
+  },
+  cardInner: {
+    backgroundColor: '#F0F0F3',
+    borderRadius: 24,
+    padding: 20,
+    flexDirection: 'row',
+    shadowColor: '#D1D9E6',
+    shadowOffset: { width: 6, height: 6 },
+    shadowOpacity: 0.7,
+    shadowRadius: 8,
+    elevation: 6,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+  },
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cardContentContainer: {
+    flex: 1,
+    marginLeft: 14,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#2D3436',
+    flex: 1,
+  },
+  priorityBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 10,
+    marginLeft: 8,
+  },
+  priorityText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  cardContent: {
+    fontSize: 13,
+    color: '#636E72',
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  cardDate: {
+    fontSize: 12,
+    color: '#B2BEC3',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#B2BEC3',
+    marginTop: 12,
+  },
+});

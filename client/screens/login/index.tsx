@@ -95,7 +95,7 @@ export default function LoginScreen() {
               onPress={handleLogin}
               disabled={loading}
             >
-              <FontAwesome6 name="arrow-right" size={18} color="#FFFFFF" />
+              <FontAwesome6 name="sign-in-alt" size={18} color="#FFFFFF" />
               <Text style={styles.loginButtonText}>
                 {loading ? '登录中...' : '登录'}
               </Text>

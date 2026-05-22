@@ -1,184 +1,296 @@
-'use client';
-
 import { useState, useCallback } from 'react';
-import { Link } from 'expo-router';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
 import { Screen } from '@/components/Screen';
-import { Card, Text, View } from '@/components/ui';
-import { useFocusEffect } from 'expo-router';
-import { api, initStorage } from '@/utils/storage';
+import { Link } from 'expo-router';
 import { FontAwesome6 } from '@expo/vector-icons';
+import { useFocusEffect } from 'expo-router';
 
-interface Stats {
-  notifications: number;
-  activities: number;
-  matches: number;
+interface NoticeCount {
+  notification: number;
+  activity: number;
+}
+
+interface MenuCardProps {
+  icon: string;
+  title: string;
+  subtitle: string;
+  color: string;
+  href: string;
+  badge?: number;
+}
+
+function MenuCard({ icon, title, subtitle, color, href, badge }: MenuCardProps) {
+  return (
+    <Link href={href} asChild>
+      <TouchableOpacity style={styles.menuCardOuter}>
+        <View style={styles.menuCardInner}>
+          <View style={[styles.iconContainer, { backgroundColor: `${color}1A` }]}>
+            <FontAwesome6 name={icon as any} size={24} color={color} />
+            {badge !== undefined && badge > 0 && (
+              <View style={[styles.badge, { backgroundColor: color }]}>
+                <Text style={styles.badgeText}>{badge > 99 ? '99+' : badge}</Text>
+              </View>
+            )}
+          </View>
+          <View style={styles.menuTextContainer}>
+            <Text style={styles.menuTitle}>{title}</Text>
+            <Text style={styles.menuSubtitle}>{subtitle}</Text>
+          </View>
+          <FontAwesome6 name="chevron-right" size={16} color="#B2BEC3" />
+        </View>
+      </TouchableOpacity>
+    </Link>
+  );
 }
 
 export default function HomeScreen() {
-  const [counts, setCounts] = useState<Stats>({ notifications: 0, activities: 0, matches: 0 });
-  const [loading, setLoading] = useState(true);
+  const [counts, setCounts] = useState<NoticeCount>({ notification: 0, activity: 0 });
 
   useFocusEffect(
     useCallback(() => {
-      initStorage();
+      let retryCount = 0;
+      const maxRetries = 3;
+      
+      const fetchCounts = async () => {
+        try {
+          const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL || 'http://localhost:9091';
+          
+          const [notifRes, actRes] = await Promise.all([
+            fetch(`${baseUrl}/api/v1/notifications`),
+            fetch(`${baseUrl}/api/v1/activities`),
+          ]);
+          
+          if (!notifRes.ok || !actRes.ok) {
+            throw new Error('Network response not ok');
+          }
+          
+          const notifData = await notifRes.json();
+          const actData = await actRes.json();
+          setCounts({
+            notification: Array.isArray(notifData.data) ? notifData.data.length : 0,
+            activity: Array.isArray(actData.data) ? actData.data.length : 0,
+          });
+        } catch (e) {
+          retryCount++;
+          if (retryCount < maxRetries) {
+            setTimeout(fetchCounts, 500);
+          } else {
+            setCounts({ notification: 0, activity: 0 });
+          }
+        }
+      };
       fetchCounts();
     }, [])
   );
 
-  const fetchCounts = async () => {
-    try {
-      const response = await api.getStats();
-      if (response.code === 0) {
-        setCounts(response.data);
-      }
-    } catch (error) {
-      console.error('Failed to fetch counts:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const menuItems = [
-    {
-      title: '学生会通知',
-      subtitle: '查看最新通知',
-      icon: 'bullhorn',
-      count: counts.notifications,
-      href: '/notifications',
-      iconBg: 'rgba(108, 99, 255, 0.12)',
-      iconColor: '#6C63FF',
-    },
-    {
-      title: '活动通知',
-      subtitle: '精彩校园活动',
-      icon: 'party-bell',
-      count: counts.activities,
-      href: '/activities',
-      iconBg: 'rgba(255, 101, 132, 0.12)',
-      iconColor: '#FF6584',
-    },
-    {
-      title: '足联篮联赛程',
-      subtitle: '足球篮球赛程',
-      icon: 'football',
-      count: counts.matches,
-      href: '/schedule',
-      iconBg: 'rgba(0, 184, 148, 0.12)',
-      iconColor: '#00B894',
-    },
-    {
-      title: '意见反馈',
-      subtitle: '提交您的建议',
-      icon: 'comment-dots',
-      href: '/feedback',
-      iconBg: 'rgba(253, 203, 110, 0.12)',
-      iconColor: '#FDCB6E',
-    },
-  ];
-
   return (
     <Screen>
-      <View className="flex-1" style={{ backgroundColor: 'var(--background)' }}>
-        {/* 顶部渐变背景 */}
-        <View 
-          className="px-6 pt-14 pb-10"
-          style={{ 
-            background: 'linear-gradient(135deg, #6C63FF 0%, #896BFF 50%, #FF6584 100%)',
-            borderBottomLeftRadius: 32,
-            borderBottomRightRadius: 32,
-          }}
-        >
-          <Text className="text-white text-3xl font-bold">学生会</Text>
-          <Text className="text-white/80 text-sm mt-1 tracking-wide">Student Union</Text>
-          <Text className="text-white/60 text-xs mt-3">
-            校园生活服务助手
-          </Text>
-        </View>
-
-        {/* 功能菜单 */}
-        <View className="px-4 -mt-6">
-          <View className="flex-row flex-wrap justify-between">
-            {menuItems.map((item, index) => (
-              <Link key={index} href={item.href as any} asChild>
-                <Card 
-                  className="w-[48%] mb-4"
-                  style={{ 
-                    backgroundColor: 'var(--surface)',
-                    borderRadius: 24,
-                    shadowColor: '#000',
-                    shadowOffset: { width: 6, height: 6 },
-                    shadowOpacity: 0.08,
-                    shadowRadius: 12,
-                    elevation: 4,
-                  }}
-                >
-                  <View className="items-center p-4">
-                    <View 
-                      className="w-14 h-14 rounded-2xl items-center justify-center mb-3"
-                      style={{ backgroundColor: item.iconBg }}
-                    >
-                      <FontAwesome6 name={item.icon as any} size={24} color={item.iconColor} />
-                    </View>
-                    <Text 
-                      className="font-semibold text-base mb-1"
-                      style={{ color: 'var(--foreground)' }}
-                    >
-                      {item.title}
-                    </Text>
-                    <Text 
-                      className="text-xs"
-                      style={{ color: 'var(--muted)' }}
-                    >
-                      {item.subtitle}
-                    </Text>
-                    {item.count !== undefined && (
-                      <View 
-                        className="mt-2 px-3 py-1 rounded-full"
-                        style={{ backgroundColor: item.iconBg }}
-                      >
-                        <Text 
-                          className="text-xs font-medium"
-                          style={{ color: item.iconColor }}
-                        >
-                          {loading ? '...' : `${item.count} 条`}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                </Card>
-              </Link>
-            ))}
+      <ScrollView 
+        style={styles.container} 
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.greeting}>你好</Text>
+            <Text style={styles.title}>欢迎使用学生会</Text>
+          </View>
+          <View style={styles.avatarContainer}>
+            <FontAwesome6 name="graduation-cap" size={24} color="#6C63FF" />
           </View>
         </View>
 
-        {/* 底部提示 */}
-        <View className="px-4 mt-auto pb-8">
-          <View 
-            className="rounded-2xl p-4 mx-2"
-            style={{ 
-              backgroundColor: 'var(--surface)',
-              boxShadow: 'var(--surface-shadow)',
-            }}
-          >
-            <View className="flex-row items-center">
-              <View 
-                className="w-10 h-10 rounded-full items-center justify-center"
-                style={{ backgroundColor: 'rgba(108, 99, 255, 0.12)' }}
-              >
-                <FontAwesome6 name="circle-info" size={18} color="#6C63FF" />
-              </View>
-              <View className="ml-3 flex-1">
-                <Text className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>
-                  温馨提示
-                </Text>
-                <Text className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>
-                  点击卡片进入对应功能，管理员可登录管理内容
-                </Text>
-              </View>
-            </View>
+        {/* Menu Section */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>快捷服务</Text>
+        </View>
+
+        <View style={styles.menuGrid}>
+          <MenuCard
+            icon="bullhorn"
+            title="学生会通知"
+            subtitle="查看最新公告"
+            color="#6C63FF"
+            href="/(tabs)/notifications"
+            badge={counts.notification}
+          />
+          <MenuCard
+            icon="calendar-check"
+            title="活动通知"
+            subtitle="精彩活动不容错过"
+            color="#FF6584"
+            href="/(tabs)/activities"
+            badge={counts.activity}
+          />
+          <MenuCard
+            icon="football"
+            title="足篮球赛程"
+            subtitle="校联赛程安排"
+            color="#00B894"
+            href="/(tabs)/profile"
+          />
+          <MenuCard
+            icon="comment-dots"
+            title="意见反馈"
+            subtitle="提出你的建议"
+            color="#FDCB6E"
+            href="/feedback"
+          />
+        </View>
+
+        {/* Quick Stats */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>数据概览</Text>
+        </View>
+
+        <View style={styles.statsRow}>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>{counts.notification}</Text>
+            <Text style={styles.statLabel}>通知公告</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>{counts.activity}</Text>
+            <Text style={styles.statLabel}>精彩活动</Text>
           </View>
         </View>
-      </View>
+
+        <View style={{ height: 120 }} />
+      </ScrollView>
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F0F0F3',
+  },
+  contentContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 120,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  greeting: {
+    fontSize: 14,
+    color: '#636E72',
+    marginBottom: 4,
+  },
+  title: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#2D3436',
+  },
+  avatarContainer: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(108, 99, 255, 0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#2D3436',
+  },
+  menuGrid: {
+    gap: 16,
+  },
+  menuCardOuter: {
+    marginBottom: 16,
+  },
+  menuCardInner: {
+    backgroundColor: '#F0F0F3',
+    borderRadius: 24,
+    padding: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#D1D9E6',
+    shadowOffset: { width: 6, height: 6 },
+    shadowOpacity: 0.7,
+    shadowRadius: 8,
+    elevation: 6,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+  },
+  iconContainer: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+  },
+  badgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  menuTextContainer: {
+    flex: 1,
+    marginLeft: 14,
+  },
+  menuTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#2D3436',
+    marginBottom: 4,
+  },
+  menuSubtitle: {
+    fontSize: 13,
+    color: '#636E72',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: '#F0F0F3',
+    borderRadius: 24,
+    padding: 20,
+    alignItems: 'center',
+    shadowColor: '#D1D9E6',
+    shadowOffset: { width: 6, height: 6 },
+    shadowOpacity: 0.7,
+    shadowRadius: 8,
+    elevation: 6,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+  },
+  statNumber: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#6C63FF',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 13,
+    color: '#636E72',
+  },
+});

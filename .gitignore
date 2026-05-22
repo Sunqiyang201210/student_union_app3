@@ -10,4 +10,3 @@ expo-env.d.ts
 logs/
 *.tsbuildinfo
 node-compile-cache/
-.cozeproj/reduction

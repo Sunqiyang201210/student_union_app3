@@ -1,10 +1,7 @@
-'use client';
-
 import { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import { Screen } from '@/components/Screen';
-import { Card, Text, View } from '@/components/ui';
 import { useFocusEffect } from 'expo-router';
-import { api, initStorage } from '@/utils/storage';
 import { FontAwesome6 } from '@expo/vector-icons';
 
 interface Activity {
@@ -13,6 +10,7 @@ interface Activity {
   description: string;
   location: string;
   start_time: string;
+  end_time: string | null;
   organizer: string;
   status: string;
 }
@@ -20,185 +18,261 @@ interface Activity {
 export default function ActivitiesScreen() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const fetchActivities = useCallback(async () => {
+  const fetchActivities = async (retries = 3) => {
     try {
-      const response = await api.getActivities();
-      if (response.code === 0) {
-        setActivities(response.data);
+      const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL || 'http://localhost:9091';
+      const response = await fetch(`${baseUrl}/api/v1/activities`, {
+        signal: AbortSignal.timeout(5000),
+      });
+      
+      if (!response.ok) throw new Error('Network response not ok');
+      
+      const data = await response.json();
+      if (data.code === 0) {
+        setActivities(Array.isArray(data.data) ? data.data : []);
       }
-    } catch (error) {
-      console.error('Failed to fetch activities:', error);
+    } catch (e) {
+      if (retries > 0) {
+        await new Promise(r => setTimeout(r, 500));
+        return fetchActivities(retries - 1);
+      }
+      console.log('Failed to fetch activities');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  }, []);
+  };
 
   useFocusEffect(
     useCallback(() => {
-      initStorage();
       fetchActivities();
-    }, [fetchActivities])
+    }, [])
   );
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return `${date.getMonth() + 1}月${date.getDate()}日`;
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchActivities();
   };
 
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
+  const formatDateTime = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
     const hours = date.getHours().toString().padStart(2, '0');
     const minutes = date.getMinutes().toString().padStart(2, '0');
-    return `${hours}:${minutes}`;
+    return {
+      date: `${month}月${day}日`,
+      time: `${hours}:${minutes}`,
+    };
+  };
+
+  const getStatusConfig = (status: string) => {
+    switch (status) {
+      case 'upcoming':
+        return { text: '即将开始', color: '#00B894', bg: 'rgba(0, 184, 148, 0.12)' };
+      case 'ongoing':
+        return { text: '进行中', color: '#6C63FF', bg: 'rgba(108, 99, 255, 0.12)' };
+      case 'ended':
+        return { text: '已结束', color: '#B2BEC3', bg: 'rgba(178, 190, 195, 0.12)' };
+      default:
+        return { text: '未知', color: '#B2BEC3', bg: 'rgba(178, 190, 195, 0.12)' };
+    }
+  };
+
+  const ActivityCard = ({ item }: { item: Activity }) => {
+    const { date, time } = formatDateTime(item.start_time);
+    const statusConfig = getStatusConfig(item.status);
+    
+    return (
+      <View style={styles.cardOuter}>
+        <View style={styles.cardInner}>
+          {/* Date Badge */}
+          <View style={styles.dateContainer}>
+            <Text style={styles.dateText}>{date}</Text>
+            <Text style={styles.timeText}>{time}</Text>
+          </View>
+          
+          {/* Content */}
+          <View style={styles.cardContentContainer}>
+            <View style={styles.titleRow}>
+              <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
+              <View style={[styles.statusBadge, { backgroundColor: statusConfig.bg }]}>
+                <Text style={[styles.statusText, { color: statusConfig.color }]}>
+                  {statusConfig.text}
+                </Text>
+              </View>
+            </View>
+            
+            <Text style={styles.cardDescription} numberOfLines={2}>
+              {item.description}
+            </Text>
+            
+            <View style={styles.infoRow}>
+              <View style={styles.infoItem}>
+                <FontAwesome6 name="location-dot" size={14} color="#6C63FF" />
+                <Text style={styles.infoText}>{item.location}</Text>
+              </View>
+              <View style={styles.infoItem}>
+                <FontAwesome6 name="user" size={14} color="#6C63FF" />
+                <Text style={styles.infoText}>{item.organizer}</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      </View>
+    );
   };
 
   return (
     <Screen>
-      <View className="flex-1" style={{ backgroundColor: 'var(--background)' }}>
-        {/* 顶部标题 */}
-        <View 
-          className="px-6 pt-14 pb-6"
-          style={{ 
-            background: 'linear-gradient(135deg, #FF6584 0%, #FF8A9B 100%)',
-            borderBottomLeftRadius: 32,
-            borderBottomRightRadius: 32,
-          }}
-        >
-          <Text className="text-white text-2xl font-bold">活动通知</Text>
-          <View className="flex-row items-center mt-2">
-            <FontAwesome6 name="star" size={14} color="rgba(255,255,255,0.8)" />
-            <Text className="text-white/80 text-sm ml-2">
-              {loading ? '加载中...' : `共 ${activities.length} 个精彩活动`}
-            </Text>
-          </View>
-        </View>
-
-        {/* 活动列表 */}
-        <View className="flex-1 px-4 py-5">
-          {loading ? (
-            <View className="flex-1 items-center justify-center">
-              <View 
-                className="w-16 h-16 rounded-full items-center justify-center"
-                style={{ backgroundColor: 'rgba(255, 101, 132, 0.12)' }}
-              >
-                <FontAwesome6 name="spinner" size={24} color="#FF6584" />
-              </View>
-              <Text className="mt-4" style={{ color: 'var(--muted)' }}>加载中...</Text>
-            </View>
-          ) : activities.length === 0 ? (
-            <View className="flex-1 items-center justify-center">
-              <View 
-                className="w-20 h-20 rounded-full items-center justify-center mb-4"
-                style={{ backgroundColor: 'rgba(255, 101, 132, 0.08)' }}
-              >
-                <FontAwesome6 name="calendar-xmark" size={32} color="#FF6584" />
-              </View>
-              <Text className="text-lg font-medium" style={{ color: 'var(--muted)' }}>暂无活动</Text>
-              <Text className="text-sm mt-1" style={{ color: 'var(--muted)' }}>精彩活动即将上线</Text>
-            </View>
-          ) : (
-            activities.map((item, index) => (
-              <Card
-                key={item.id}
-                className="mb-4 overflow-hidden"
-                style={{ 
-                  backgroundColor: 'var(--surface)',
-                  borderRadius: 20,
-                  boxShadow: 'var(--surface-shadow)',
-                }}
-              >
-                {/* 顶部渐变条 */}
-                <View 
-                  className="h-1.5"
-                  style={{ 
-                    background: 'linear-gradient(90deg, #FF6584 0%, #FF8A9B 100%)',
-                  }}
-                />
-                
-                <View className="p-4">
-                  {/* 标题和状态 */}
-                  <View className="flex-row justify-between items-start mb-3">
-                    <Text 
-                      className="font-bold text-base flex-1 pr-2 leading-snug"
-                      style={{ color: 'var(--foreground)' }}
-                      numberOfLines={2}
-                    >
-                      {item.title}
-                    </Text>
-                    <View 
-                      className="px-3 py-1 rounded-full"
-                      style={{ backgroundColor: 'rgba(255, 101, 132, 0.12)' }}
-                    >
-                      <Text className="text-xs font-medium" style={{ color: '#FF6584' }}>
-                        即将开始
-                      </Text>
-                    </View>
-                  </View>
-
-                  {/* 描述 */}
-                  <Text 
-                    className="text-sm leading-relaxed mb-4"
-                    style={{ color: 'var(--muted)' }}
-                    numberOfLines={2}
-                  >
-                    {item.description}
-                  </Text>
-
-                  {/* 时间和地点卡片 */}
-                  <View 
-                    className="rounded-2xl p-4 mb-4"
-                    style={{ backgroundColor: 'var(--background)' }}
-                  >
-                    <View className="flex-row items-center mb-2">
-                      <View 
-                        className="w-8 h-8 rounded-lg items-center justify-center mr-3"
-                        style={{ backgroundColor: 'rgba(255, 101, 132, 0.12)' }}
-                      >
-                        <FontAwesome6 name="clock" size={14} color="#FF6584" />
-                      </View>
-                      <View>
-                        <Text className="text-xs" style={{ color: 'var(--muted)' }}>活动时间</Text>
-                        <Text className="font-medium" style={{ color: 'var(--foreground)' }}>
-                          {formatDate(item.start_time)} {formatTime(item.start_time)}
-                        </Text>
-                      </View>
-                    </View>
-                    
-                    <View className="flex-row items-center">
-                      <View 
-                        className="w-8 h-8 rounded-lg items-center justify-center mr-3"
-                        style={{ backgroundColor: 'rgba(108, 99, 255, 0.12)' }}
-                      >
-                        <FontAwesome6 name="location-dot" size={14} color="#6C63FF" />
-                      </View>
-                      <View>
-                        <Text className="text-xs" style={{ color: 'var(--muted)' }}>活动地点</Text>
-                        <Text className="font-medium" style={{ color: 'var(--foreground)' }}>
-                          {item.location}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-
-                  {/* 主办方 */}
-                  <View className="flex-row items-center">
-                    <View 
-                      className="w-8 h-8 rounded-lg items-center justify-center mr-2"
-                      style={{ backgroundColor: 'rgba(0, 184, 148, 0.12)' }}
-                    >
-                      <FontAwesome6 name="user-tie" size={14} color="#00B894" />
-                    </View>
-                    <Text className="text-sm" style={{ color: 'var(--muted)' }}>
-                      主办: <Text className="font-medium" style={{ color: '#00B894' }}>{item.organizer}</Text>
-                    </Text>
-                  </View>
-                </View>
-              </Card>
-            ))
-          )}
-        </View>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>活动通知</Text>
+        <Text style={styles.headerSubtitle}>精彩活动不容错过</Text>
       </View>
+      <ScrollView 
+        style={styles.container} 
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#6C63FF']} />
+        }
+      >
+        {loading ? (
+          <View style={styles.emptyContainer}>
+            <FontAwesome6 name="spinner" size={32} color="#B2BEC3" />
+            <Text style={styles.emptyText}>加载中...</Text>
+          </View>
+        ) : activities.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <FontAwesome6 name="calendar-xmark" size={48} color="#B2BEC3" />
+            <Text style={styles.emptyText}>暂无活动</Text>
+          </View>
+        ) : (
+          activities.map((item) => (
+            <ActivityCard key={item.id} item={item} />
+          ))
+        )}
+        <View style={{ height: 120 }} />
+      </ScrollView>
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F0F0F3',
+  },
+  contentContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 120,
+  },
+  header: {
+    backgroundColor: '#F0F0F3',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 12,
+  },
+  headerTitle: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#2D3436',
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    color: '#636E72',
+    marginTop: 4,
+  },
+  cardOuter: {
+    marginBottom: 16,
+  },
+  cardInner: {
+    backgroundColor: '#F0F0F3',
+    borderRadius: 24,
+    padding: 20,
+    flexDirection: 'row',
+    shadowColor: '#D1D9E6',
+    shadowOffset: { width: 6, height: 6 },
+    shadowOpacity: 0.7,
+    shadowRadius: 8,
+    elevation: 6,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+  },
+  dateContainer: {
+    width: 64,
+    height: 64,
+    backgroundColor: '#6C63FF',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  dateText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  timeText: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginTop: 2,
+  },
+  cardContentContainer: {
+    flex: 1,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#2D3436',
+    flex: 1,
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 10,
+    marginLeft: 8,
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  cardDescription: {
+    fontSize: 13,
+    color: '#636E72',
+    lineHeight: 20,
+    marginBottom: 10,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  infoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  infoText: {
+    fontSize: 12,
+    color: '#636E72',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#B2BEC3',
+    marginTop: 12,
+  },
+});

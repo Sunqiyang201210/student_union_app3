@@ -1,298 +1,396 @@
-'use client';
-
-import { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Screen } from '@/components/Screen';
-import { Card, Text, View, Button } from '@/components/ui';
-import { FontAwesome6 } from '@expo/vector-icons';
-import { useFocusEffect } from 'expo-router';
 import { Link } from 'expo-router';
+import { FontAwesome6 } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
-import { api, initStorage } from '@/utils/storage';
+import { useSafeRouter } from '@/hooks/useSafeRouter';
+import { useState, useCallback } from 'react';
+import { useFocusEffect } from 'expo-router';
+
+const MenuItem = ({ 
+  icon, 
+  title, 
+  subtitle, 
+  color, 
+  href 
+}: { 
+  icon: string; 
+  title: string; 
+  subtitle: string; 
+  color: string; 
+  href: string;
+}) => (
+  <Link href={href} asChild>
+    <TouchableOpacity style={styles.menuItemOuter}>
+      <View style={styles.menuItemInner}>
+        <View style={[styles.iconContainer, { backgroundColor: `${color}1A` }]}>
+          <FontAwesome6 name={icon as any} size={22} color={color} />
+        </View>
+        <View style={styles.textContainer}>
+          <Text style={styles.menuTitle}>{title}</Text>
+          <Text style={styles.menuSubtitle}>{subtitle}</Text>
+        </View>
+        <FontAwesome6 name="chevron-right" size={16} color="#B2BEC3" />
+      </View>
+    </TouchableOpacity>
+  </Link>
+);
 
 export default function ProfileScreen() {
-  const { user, logout } = useAuth();
+  const { isAuthenticated, user, logout } = useAuth();
+  const router = useSafeRouter();
   const [stats, setStats] = useState({ notifications: 0, activities: 0, matches: 0 });
 
-  const fetchStats = useCallback(async () => {
-    try {
-      initStorage();
-      const [notifRes, actRes, matchRes] = await Promise.all([
-        api.getNotifications(),
-        api.getActivities(),
-        api.getMatches(),
-      ]);
-      setStats({
-        notifications: notifRes.data?.length || 0,
-        activities: actRes.data?.length || 0,
-        matches: matchRes.data?.length || 0,
-      });
-    } catch (error) {
-      console.error('Failed to fetch stats:', error);
-    }
-  }, []);
+  const handleLogout = () => {
+    logout();
+    router.replace('/');
+  };
 
+  // 从API获取统计数据
   useFocusEffect(
     useCallback(() => {
+      const fetchStats = async () => {
+        try {
+          const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL || 'http://localhost:9091';
+          const [notifRes, actRes, matchRes] = await Promise.all([
+            fetch(`${baseUrl}/api/v1/notifications`),
+            fetch(`${baseUrl}/api/v1/activities`),
+            fetch(`${baseUrl}/api/v1/matches`),
+          ]);
+          
+          if (notifRes.ok && actRes.ok && matchRes.ok) {
+            const [notifData, actData, matchData] = await Promise.all([
+              notifRes.json(),
+              actRes.json(),
+              matchRes.json(),
+            ]);
+            
+            setStats({
+              notifications: Array.isArray(notifData.data) ? notifData.data.length : 0,
+              activities: Array.isArray(actData.data) ? actData.data.length : 0,
+              matches: Array.isArray(matchData.data) ? matchData.data.length : 0,
+            });
+          }
+        } catch (e) {
+          // 静默失败，使用默认值0
+        }
+      };
+      
       fetchStats();
-    }, [fetchStats])
+    }, [])
   );
 
   return (
     <Screen>
-      <View className="flex-1" style={{ backgroundColor: 'var(--background)' }}>
-        {/* 顶部渐变背景 */}
-        <View 
-          className="px-6 pt-14 pb-8"
-          style={{ 
-            background: 'linear-gradient(135deg, #667EEA 0%, #764BA2 100%)',
-            borderBottomLeftRadius: 32,
-            borderBottomRightRadius: 32,
-          }}
-        >
-          <Text className="text-white text-2xl font-bold">我的</Text>
-          <Text className="text-white/70 text-sm mt-1">欢迎使用学生会APP</Text>
+      <ScrollView 
+        style={styles.container} 
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* User Header */}
+        <View style={styles.userHeader}>
+          <View style={styles.avatarContainer}>
+            {isAuthenticated ? (
+              <FontAwesome6 name="user-shield" size={40} color="#6C63FF" />
+            ) : (
+              <FontAwesome6 name="user-graduate" size={40} color="#6C63FF" />
+            )}
+          </View>
+          <Text style={styles.userName}>{isAuthenticated ? user?.username : '学生用户'}</Text>
+          <Text style={styles.userRole}>{isAuthenticated ? '管理员' : '学生会成员'}</Text>
         </View>
 
-        <View className="flex-1 px-4 -mt-6">
-          {/* 用户信息卡片 */}
-          <Card
-            className="mb-4 overflow-hidden"
-            style={{ 
-              backgroundColor: 'var(--surface)',
-              borderRadius: 20,
-              boxShadow: 'var(--surface-shadow)',
-            }}
-          >
-            <View className="p-5 flex-row items-center">
-              <View 
-                className="w-16 h-16 rounded-full items-center justify-center"
-                style={{ 
-                  background: user 
-                    ? 'linear-gradient(135deg, #667EEA 0%, #764BA2 100%)'
-                    : 'linear-gradient(135deg, #B8B8B8 0%, #9B9B9B 100%)'
-                }}
-              >
-                <FontAwesome6 name="user" size={28} color="white" />
-              </View>
-              <View className="ml-4 flex-1">
-                <Text className="font-bold text-lg" style={{ color: 'var(--foreground)' }}>
-                  {user ? user.username : '游客用户'}
-                </Text>
-                <View className="flex-row items-center mt-1">
-                  <View 
-                    className="px-2 py-0.5 rounded-full"
-                    style={{ backgroundColor: user ? 'rgba(102, 126, 234, 0.15)' : 'rgba(156, 163, 175, 0.15)' }}
-                  >
-                    <Text 
-                      className="text-xs font-medium"
-                      style={{ color: user ? '#667EEA' : '#9B9B9B' }}
-                    >
-                      {user ? '管理员' : '普通用户'}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-              {!user && (
-                <Link href="/login" asChild>
-                  <Button 
-                    size="sm"
-                    style={{ backgroundColor: '#667EEA', borderRadius: 12 }}
-                  >
-                    <Text className="text-white text-sm font-medium">登录</Text>
-                  </Button>
-                </Link>
-              )}
+        {/* Admin Section - Only show when logged in */}
+        {isAuthenticated && (
+          <View style={styles.adminSection}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>管理功能</Text>
             </View>
-          </Card>
 
-          {/* 数据统计卡片 */}
-          <Card
-            className="mb-4 overflow-hidden"
-            style={{ 
-              backgroundColor: 'var(--surface)',
-              borderRadius: 20,
-              boxShadow: 'var(--surface-shadow)',
-            }}
-          >
-            <View className="p-4">
-              <Text className="font-medium text-sm mb-3" style={{ color: 'var(--muted)' }}>
-                内容统计
-              </Text>
-              <View className="flex-row justify-between">
-                <View className="items-center flex-1">
-                  <View 
-                    className="w-12 h-12 rounded-2xl items-center justify-center mb-2"
-                    style={{ backgroundColor: 'rgba(102, 126, 234, 0.12)' }}
-                  >
-                    <FontAwesome6 name="bell" size={20} color="#667EEA" />
-                  </View>
-                  <Text className="font-bold text-xl" style={{ color: 'var(--foreground)' }}>
-                    {stats.notifications}
-                  </Text>
-                  <Text className="text-xs" style={{ color: 'var(--muted)' }}>通知</Text>
-                </View>
-                <View className="items-center flex-1">
-                  <View 
-                    className="w-12 h-12 rounded-2xl items-center justify-center mb-2"
-                    style={{ backgroundColor: 'rgba(255, 140, 0, 0.12)' }}
-                  >
-                    <FontAwesome6 name="calendar-plus" size={20} color="#FF8C00" />
-                  </View>
-                  <Text className="font-bold text-xl" style={{ color: 'var(--foreground)' }}>
-                    {stats.activities}
-                  </Text>
-                  <Text className="text-xs" style={{ color: 'var(--muted)' }}>活动</Text>
-                </View>
-                <View className="items-center flex-1">
-                  <View 
-                    className="w-12 h-12 rounded-2xl items-center justify-center mb-2"
-                    style={{ backgroundColor: 'rgba(17, 153, 142, 0.12)' }}
-                  >
-                    <FontAwesome6 name="futbol" size={20} color="#11998E" />
-                  </View>
-                  <Text className="font-bold text-xl" style={{ color: 'var(--foreground)' }}>
-                    {stats.matches}
-                  </Text>
-                  <Text className="text-xs" style={{ color: 'var(--muted)' }}>赛程</Text>
-                </View>
-              </View>
+            <View style={styles.menuSection}>
+              <MenuItem
+                icon="cog"
+                title="内容管理"
+                subtitle="发布和编辑通知、活动、赛程"
+                color="#6C63FF"
+                href="/(tabs)/manage"
+              />
             </View>
-          </Card>
+          </View>
+        )}
 
-          {/* 功能入口 */}
-          <Card
-            className="mb-4 overflow-hidden"
-            style={{ 
-              backgroundColor: 'var(--surface)',
-              borderRadius: 20,
-              boxShadow: 'var(--surface-shadow)',
-            }}
-          >
-            <View className="p-4">
-              <Text className="font-medium text-sm mb-3" style={{ color: 'var(--muted)' }}>
-                快捷功能
-              </Text>
-              
-              <View>
-                <Link href="/notifications" asChild>
-                  <View className="flex-row items-center py-3 px-2 rounded-xl" style={{ backgroundColor: 'var(--background)' }}>
-                    <View 
-                      className="w-11 h-11 rounded-xl items-center justify-center"
-                      style={{ backgroundColor: 'rgba(102, 126, 234, 0.12)' }}
-                    >
-                      <FontAwesome6 name="bell" size={18} color="#667EEA" />
-                    </View>
-                    <View className="ml-3 flex-1">
-                      <Text className="font-medium" style={{ color: 'var(--foreground)' }}>学生会通知</Text>
-                      <Text className="text-xs" style={{ color: 'var(--muted)' }}>查看最新通知公告</Text>
-                    </View>
-                    <Text style={{ color: 'var(--muted)' }}>{'>'}</Text>
-                  </View>
-                </Link>
+        {/* Stats Row */}
+        <View style={styles.statsRow}>
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>{stats.notifications}</Text>
+            <Text style={styles.statLabel}>通知</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>{stats.activities}</Text>
+            <Text style={styles.statLabel}>活动</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>{stats.matches}</Text>
+            <Text style={styles.statLabel}>赛程</Text>
+          </View>
+        </View>
 
-                <Link href="/activities" asChild>
-                  <View className="flex-row items-center py-3 px-2 mt-2 rounded-xl" style={{ backgroundColor: 'var(--background)' }}>
-                    <View 
-                      className="w-11 h-11 rounded-xl items-center justify-center"
-                      style={{ backgroundColor: 'rgba(255, 140, 0, 0.12)' }}
-                    >
-                      <FontAwesome6 name="calendar-plus" size={18} color="#FF8C00" />
-                    </View>
-                    <View className="ml-3 flex-1">
-                      <Text className="font-medium" style={{ color: 'var(--foreground)' }}>活动通知</Text>
-                      <Text className="text-xs" style={{ color: 'var(--muted)' }}>查看近期活动</Text>
-                    </View>
-                    <Text style={{ color: 'var(--muted)' }}>{'>'}</Text>
-                  </View>
-                </Link>
+        {/* Menu Section */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>校园服务</Text>
+        </View>
 
-                <Link href="/schedule" asChild>
-                  <View className="flex-row items-center py-3 px-2 mt-2 rounded-xl" style={{ backgroundColor: 'var(--background)' }}>
-                    <View 
-                      className="w-11 h-11 rounded-xl items-center justify-center"
-                      style={{ backgroundColor: 'rgba(17, 153, 142, 0.12)' }}
-                    >
-                      <FontAwesome6 name="futbol" size={18} color="#11998E" />
-                    </View>
-                    <View className="ml-3 flex-1">
-                      <Text className="font-medium" style={{ color: 'var(--foreground)' }}>足联篮联赛程</Text>
-                      <Text className="text-xs" style={{ color: 'var(--muted)' }}>查看比赛安排</Text>
-                    </View>
-                    <Text style={{ color: 'var(--muted)' }}>{'>'}</Text>
-                  </View>
-                </Link>
+        <View style={styles.menuSection}>
+          <MenuItem
+            icon="football"
+            title="足球联赛"
+            subtitle="查看校足球联赛程"
+            color="#00B894"
+            href="/schedule?league=校足球联赛"
+          />
+          <MenuItem
+            icon="basketball"
+            title="篮球联赛"
+            subtitle="查看校篮球联赛程"
+            color="#FF6584"
+            href="/schedule?league=校篮球联赛"
+          />
+          <MenuItem
+            icon="comment-dots"
+            title="意见反馈"
+            subtitle="提交您的建议和意见"
+            color="#FDCB6E"
+            href="/feedback"
+          />
+        </View>
 
-                <Link href="/feedback" asChild>
-                  <View className="flex-row items-center py-3 px-2 mt-2 rounded-xl" style={{ backgroundColor: 'var(--background)' }}>
-                    <View 
-                      className="w-11 h-11 rounded-xl items-center justify-center"
-                      style={{ backgroundColor: 'rgba(168, 85, 247, 0.12)' }}
-                    >
-                      <FontAwesome6 name="comment" size={18} color="#A855F7" />
-                    </View>
-                    <View className="ml-3 flex-1">
-                      <Text className="font-medium" style={{ color: 'var(--foreground)' }}>意见反馈</Text>
-                      <Text className="text-xs" style={{ color: 'var(--muted)' }}>提交您的建议</Text>
-                    </View>
-                    <Text style={{ color: 'var(--muted)' }}>{'>'}</Text>
-                  </View>
-                </Link>
-              </View>
-            </View>
-          </Card>
-
-          {/* 管理员功能 */}
-          {user && (
-            <Card
-              className="mb-4 overflow-hidden"
-              style={{ 
-                backgroundColor: 'var(--surface)',
-                borderRadius: 20,
-                boxShadow: 'var(--surface-shadow)',
-              }}
-            >
-              <View className="p-4">
-                <Text className="font-medium text-sm mb-3" style={{ color: 'var(--muted)' }}>
-                  管理功能
-                </Text>
-                
-                <Link href="/manage" asChild>
-                  <View className="flex-row items-center py-3 px-2 rounded-xl" style={{ backgroundColor: 'var(--background)' }}>
-                    <View 
-                      className="w-11 h-11 rounded-xl items-center justify-center"
-                      style={{ backgroundColor: 'rgba(239, 68, 68, 0.12)' }}
-                    >
-                      <FontAwesome6 name="pen-to-square" size={18} color="#EF4444" />
-                    </View>
-                    <View className="ml-3 flex-1">
-                      <Text className="font-medium" style={{ color: 'var(--foreground)' }}>内容管理</Text>
-                      <Text className="text-xs" style={{ color: 'var(--muted)' }}>管理通知、活动、赛程</Text>
-                    </View>
-                    <Text style={{ color: 'var(--muted)' }}>{'>'}</Text>
-                  </View>
-                </Link>
-
-                <View 
-                  onTouchEnd={logout}
-                  className="flex-row items-center py-3 px-2 mt-2 rounded-xl"
-                  style={{ backgroundColor: 'var(--background)' }}
-                >
-                  <View 
-                    className="w-11 h-11 rounded-xl items-center justify-center"
-                    style={{ backgroundColor: 'rgba(156, 163, 175, 0.12)' }}
-                  >
-                    <FontAwesome6 name="arrow-right-from-bracket" size={18} color="#9B9B9B" />
-                  </View>
-                  <View className="ml-3 flex-1">
-                    <Text className="font-medium" style={{ color: '#EF4444' }}>退出登录</Text>
-                    <Text className="text-xs" style={{ color: 'var(--muted)' }}>切换账号</Text>
-                  </View>
-                </View>
-              </View>
-            </Card>
+        {/* Auth Button */}
+        <View style={styles.authSection}>
+          {isAuthenticated ? (
+            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+              <FontAwesome6 name="sign-out-alt" size={18} color="#FF6B6B" />
+              <Text style={styles.logoutButtonText}>退出登录</Text>
+            </TouchableOpacity>
+          ) : (
+            <Link href="/login" asChild>
+              <TouchableOpacity style={styles.loginButton}>
+                <FontAwesome6 name="sign-in-alt" size={18} color="#FFFFFF" />
+                <Text style={styles.loginButtonText}>管理员登录</Text>
+              </TouchableOpacity>
+            </Link>
           )}
         </View>
-      </View>
+
+        {/* About Section */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>关于</Text>
+        </View>
+
+        <View style={styles.aboutCard}>
+          <View style={styles.aboutRow}>
+            <Text style={styles.aboutLabel}>版本</Text>
+            <Text style={styles.aboutValue}>1.0.0</Text>
+          </View>
+          <View style={styles.aboutRow}>
+            <Text style={styles.aboutLabel}>开发者</Text>
+            <Text style={styles.aboutValue}>学生会技术部</Text>
+          </View>
+        </View>
+
+        <View style={{ height: 120 }} />
+      </ScrollView>
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F0F0F3',
+  },
+  contentContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 120,
+  },
+  userHeader: {
+    alignItems: 'center',
+    paddingVertical: 24,
+  },
+  avatarContainer: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: 'rgba(108, 99, 255, 0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  userName: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#2D3436',
+    marginBottom: 4,
+  },
+  userRole: {
+    fontSize: 13,
+    color: '#636E72',
+  },
+  adminSection: {
+    marginBottom: 8,
+  },
+  sectionHeader: {
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#636E72',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  menuSection: {
+    backgroundColor: '#F0F0F3',
+    borderRadius: 16,
+    marginBottom: 20,
+    shadowColor: '#D1D9E6',
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 0.6,
+    shadowRadius: 6,
+    elevation: 4,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+    overflow: 'hidden',
+  },
+  menuItemOuter: {
+    backgroundColor: '#F0F0F3',
+  },
+  menuItemInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  iconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  textContainer: {
+    flex: 1,
+  },
+  menuTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#2D3436',
+    marginBottom: 2,
+  },
+  menuSubtitle: {
+    fontSize: 12,
+    color: '#636E72',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    backgroundColor: '#F0F0F3',
+    borderRadius: 16,
+    paddingVertical: 20,
+    marginBottom: 20,
+    shadowColor: '#D1D9E6',
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 0.6,
+    shadowRadius: 6,
+    elevation: 4,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statNumber: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#6C63FF',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#636E72',
+  },
+  statDivider: {
+    width: 1,
+    backgroundColor: '#E8E8EB',
+    marginVertical: 4,
+  },
+  authSection: {
+    marginBottom: 20,
+  },
+  loginButton: {
+    backgroundColor: '#6C63FF',
+    borderRadius: 12,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    shadowColor: '#6C63FF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  loginButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  logoutButton: {
+    backgroundColor: 'rgba(255, 107, 107, 0.12)',
+    borderRadius: 12,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  logoutButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FF6B6B',
+  },
+  aboutCard: {
+    backgroundColor: '#F0F0F3',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#D1D9E6',
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 0.6,
+    shadowRadius: 6,
+    elevation: 4,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+  },
+  aboutRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  aboutLabel: {
+    fontSize: 14,
+    color: '#636E72',
+  },
+  aboutValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2D3436',
+  },
+});
