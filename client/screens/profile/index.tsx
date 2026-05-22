@@ -52,10 +52,11 @@ export default function ProfileScreen() {
       const fetchStats = async () => {
         try {
           const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL || 'http://localhost:9091';
+          const bypassHeaders = { 'bypass-tunnel-reminder': 'true', 'Content-Type': 'application/json' };
           const [notifRes, actRes, matchRes] = await Promise.all([
-            fetch(`${baseUrl}/api/v1/notifications`),
-            fetch(`${baseUrl}/api/v1/activities`),
-            fetch(`${baseUrl}/api/v1/matches`),
+            fetch(`${baseUrl}/api/v1/notifications`, { headers: bypassHeaders }),
+            fetch(`${baseUrl}/api/v1/activities`, { headers: bypassHeaders }),
+            fetch(`${baseUrl}/api/v1/matches`, { headers: bypassHeaders }),
           ]);
           
           if (notifRes.ok && actRes.ok && matchRes.ok) {
