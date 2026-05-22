@@ -68,7 +68,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const response = await fetch(url, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'bypass-tunnel-reminder': 'true'
+          },
           body: JSON.stringify({ username, password }),
         });
         

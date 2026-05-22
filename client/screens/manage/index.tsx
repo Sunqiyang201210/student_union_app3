@@ -192,6 +192,7 @@ export default function ManageScreen() {
         headers: {
           'Authorization': `Bearer ${currentToken}`,
           'Content-Type': 'application/json',
+          'bypass-tunnel-reminder': 'true'
         },
         body: JSON.stringify(body),
       });

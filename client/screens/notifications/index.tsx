@@ -49,7 +49,14 @@ export default function NotificationsScreen() {
       const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL || 'http://localhost:9091';
       console.log('Fetching notifications from:', baseUrl);
       
+      // localtunnel bypass header
+      const headers: Record<string, string> = {};
+      if (baseUrl.includes('loca.lt')) {
+        headers['bypass-tunnel-reminder'] = 'true';
+      }
+      
       const response = await fetch(`${baseUrl}/api/v1/notifications`, {
+        headers,
         signal: AbortSignal.timeout(5000),
       });
       

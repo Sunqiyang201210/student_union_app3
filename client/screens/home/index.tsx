@@ -56,9 +56,12 @@ export default function HomeScreen() {
           // 使用环境变量配置的后端地址
           const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL || 'http://localhost:9091';
           
+          // localtunnel bypass headers
+          const headers = { 'bypass-tunnel-reminder': 'true' };
+          
           const [notifRes, actRes] = await Promise.all([
-            fetch(`${baseUrl}/api/v1/notifications`),
-            fetch(`${baseUrl}/api/v1/activities`),
+            fetch(`${baseUrl}/api/v1/notifications`, { headers }),
+            fetch(`${baseUrl}/api/v1/activities`, { headers }),
           ]);
           
           if (!notifRes.ok || !actRes.ok) {

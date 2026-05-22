@@ -67,6 +67,7 @@ export default function FeedbackScreen() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'bypass-tunnel-reminder': 'true'
         },
         body: JSON.stringify({
           submitter: submitter.trim(),
