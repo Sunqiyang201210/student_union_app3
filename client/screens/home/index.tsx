@@ -53,7 +53,9 @@ export default function HomeScreen() {
       
       const fetchCounts = async () => {
         try {
-          const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL || 'http://localhost:9091';
+          const baseUrl = typeof window !== 'undefined' && window.location.hostname !== 'localhost' 
+            ? `http://${window.location.hostname}:9091` 
+            : 'http://localhost:9091';
           
           const [notifRes, actRes] = await Promise.all([
             fetch(`${baseUrl}/api/v1/notifications`),
