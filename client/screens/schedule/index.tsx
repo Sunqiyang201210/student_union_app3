@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
 import { Screen } from '@/components/Screen';
 import { useFocusEffect } from 'expo-router';
-import { useSafeSearchParams } from '@/hooks/useSafeRouter';
+import { useSafeRouter, useSafeSearchParams } from '@/hooks/useSafeRouter';
 import { FontAwesome6 } from '@expo/vector-icons';
 
 interface Match {
@@ -18,6 +18,7 @@ interface Match {
 }
 
 export default function ScheduleScreen() {
+  const router = useSafeRouter();
   const { league } = useSafeSearchParams<{ league?: string }>();
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
@@ -181,7 +182,12 @@ export default function ScheduleScreen() {
   return (
     <Screen>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>赛程安排</Text>
+        <View style={styles.headerTop}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <FontAwesome6 name="arrow-left" size={20} color="#2D3436" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>赛程安排</Text>
+        </View>
         <Text style={styles.headerSubtitle}>{selectedLeague}</Text>
       </View>
       
@@ -233,8 +239,17 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: '#F0F0F3',
     paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingTop: 50,
     paddingBottom: 12,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  backButton: {
+    padding: 8,
+    marginRight: 8,
   },
   headerTitle: {
     fontSize: 26,
