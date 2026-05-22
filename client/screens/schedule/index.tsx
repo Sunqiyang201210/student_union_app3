@@ -26,10 +26,8 @@ export default function ScheduleScreen() {
 
   const fetchMatches = async (retries = 3) => {
     try {
-      // 开发环境使用 localhost，生产环境使用环境变量
-      const baseUrl = typeof window !== 'undefined' && window.location.hostname !== 'localhost' 
-        ? `http://${window.location.hostname}:9091` 
-        : 'http://localhost:9091';
+      // 使用环境变量配置的后端地址
+      const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL || 'http://localhost:9091';
       console.log('Fetching matches from:', baseUrl);
       
       const response = await fetch(`${baseUrl}/api/v1/matches?league=${encodeURIComponent(selectedLeague)}`, {

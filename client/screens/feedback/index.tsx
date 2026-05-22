@@ -61,7 +61,8 @@ export default function FeedbackScreen() {
 
     setSubmitting(true);
     try {
-      const API_BASE = process.env.EXPO_PUBLIC_BACKEND_BASE_URL || 'http://9.129.42.133:9091';
+      const API_BASE = process.env.EXPO_PUBLIC_BACKEND_BASE_URL || 
+        (typeof window !== 'undefined' ? `http://${window.location.hostname}:9091` : 'http://localhost:9091');
       const response = await fetch(`${API_BASE}/api/v1/feedbacks`, {
         method: 'POST',
         headers: {

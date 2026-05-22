@@ -63,8 +63,11 @@ export default function ManageScreen() {
   const [formAwayTeam, setFormAwayTeam] = useState('');
   const [formVenue, setFormVenue] = useState('');
 
+  const getBaseUrl = () => process.env.EXPO_PUBLIC_BACKEND_BASE_URL || 
+  (typeof window !== 'undefined' ? `http://${window.location.hostname}:9091` : 'http://localhost:9091');
+
   const fetchData = async () => {
-    const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL || 'http://9.129.42.133:9091';
+    const baseUrl = getBaseUrl();
     try {
       const [notifRes, actRes, matchRes] = await Promise.all([
         fetch(`${baseUrl}/api/v1/notifications`),
@@ -146,7 +149,7 @@ export default function ManageScreen() {
       return;
     }
     setLoading(true);
-    const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL || 'http://localhost:9091';
+    const baseUrl = getBaseUrl();
     
     try {
       let url = '';
@@ -223,7 +226,7 @@ export default function ManageScreen() {
         style: 'destructive',
         onPress: async () => {
           const currentToken = token;
-          const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL || 'http://localhost:9091';
+          const baseUrl = getBaseUrl();
           let endpoint = '';
           
           if (activeTab === 'notifications') {
