@@ -185,15 +185,28 @@ export default function ManageScreen() {
           : `${baseUrl}/api/v1/activities`;
         body = { title: formTitle, description: formContent, location: formLocation, start_time: formStartTime, organizer: formOrganizer };
       } else if (activeTab === 'matches') {
+        // 调试信息
+        console.log('=== 赛程表单调试 ===');
+        console.log('formLeague:', formLeague);
+        console.log('formHomeTeam:', formHomeTeam);
+        console.log('formAwayTeam:', formAwayTeam);
+        console.log('formStartTime:', formStartTime);
+        console.log('formVenue:', formVenue);
+        console.log('formHomeScore:', formHomeScore);
+        console.log('formAwayScore:', formAwayScore);
+        console.log('formMatchStatus:', formMatchStatus);
+        
         // 未开始时不需要比分
         const isScheduled = formMatchStatus === 'scheduled';
+        console.log('isScheduled:', isScheduled);
+        
         if (!formHomeTeam || !formAwayTeam || !formStartTime) {
-          Toast.show({ type: 'error', text1: '请填写完整信息' });
+          Toast.show({ type: 'error', text1: '请填写完整信息', text2: `队伍1:${formHomeTeam} 队伍2:${formAwayTeam}` });
           setLoading(false);
           return;
         }
         if (isScheduled && (!formHomeScore || !formAwayScore)) {
-          Toast.show({ type: 'error', text1: '请填写比分' });
+          Toast.show({ type: 'error', text1: '请填写比分', text2: `主队得分:${formHomeScore} 客队得分:${formAwayScore}` });
           setLoading(false);
           return;
         }
