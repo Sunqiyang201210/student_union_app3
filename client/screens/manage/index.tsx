@@ -583,26 +583,30 @@ export default function ManageScreen() {
                     />
                   </View>
 
-                  <View style={styles.formGroup}>
-                    <Text style={styles.formLabel}>主队得分</Text>
-                    <TextInput
-                      style={styles.formInput}
-                      placeholder="输入数字，如：2"
-                      value={formHomeScore}
-                      onChangeText={setFormHomeScore}
-                      keyboardType="numeric"
-                    />
-                  </View>
-                  <View style={styles.formGroup}>
-                    <Text style={styles.formLabel}>客队得分</Text>
-                    <TextInput
-                      style={styles.formInput}
-                      placeholder="输入数字，如：1"
-                      value={formAwayScore}
-                      onChangeText={setFormAwayScore}
-                      keyboardType="numeric"
-                    />
-                  </View>
+                  {formMatchStatus !== 'scheduled' && (
+                    <>
+                      <View style={styles.formGroup}>
+                        <Text style={styles.formLabel}>主队得分</Text>
+                        <TextInput
+                          style={styles.formInput}
+                          placeholder="输入数字，如：2"
+                          value={formHomeScore}
+                          onChangeText={setFormHomeScore}
+                          keyboardType="numeric"
+                        />
+                      </View>
+                      <View style={styles.formGroup}>
+                        <Text style={styles.formLabel}>客队得分</Text>
+                        <TextInput
+                          style={styles.formInput}
+                          placeholder="输入数字，如：1"
+                          value={formAwayScore}
+                          onChangeText={setFormAwayScore}
+                          keyboardType="numeric"
+                        />
+                      </View>
+                    </>
+                  )}
                   <View style={styles.formGroup}>
                     <Text style={styles.formLabel}>比赛状态</Text>
                     <View style={styles.formSelect}>
