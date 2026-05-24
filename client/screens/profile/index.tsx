@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, useColorScheme } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Screen } from '@/components/Screen';
 import { Link } from 'expo-router';
 import { FontAwesome6 } from '@expo/vector-icons';
@@ -40,26 +40,6 @@ const MenuItem = ({
 export default function ProfileScreen() {
   const { isAuthenticated, user, logout } = useAuth();
   const router = useSafeRouter();
-  const systemColorScheme = useColorScheme();
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    // 加载保存的主题设置
-    AsyncStorage.getItem('theme').then((savedTheme) => {
-      if (savedTheme === 'dark') {
-        setIsDark(true);
-      } else if (savedTheme === 'light') {
-        setIsDark(false);
-      } else {
-        setIsDark(systemColorScheme === 'dark');
-      }
-    });
-  }, [systemColorScheme]);
-
-  const handleThemeToggle = async (value: boolean) => {
-    setIsDark(value);
-    await AsyncStorage.setItem('theme', value ? 'dark' : 'light');
-  };
   const [stats, setStats] = useState({ notifications: 0, activities: 0, matches: 0 });
 
   const handleLogout = () => {
@@ -186,23 +166,6 @@ export default function ProfileScreen() {
             color="#FDCB6E"
             href="/feedback"
           />
-
-          {/* Theme Toggle */}
-          <View style={styles.menuItem}>
-            <View style={[styles.menuIconContainer, { backgroundColor: '#6366F1' + '20' }]}>
-              <FontAwesome6 name={isDark ? 'moon' : 'sun'} size={18} color="#6366F1" />
-            </View>
-            <View style={styles.menuContent}>
-              <Text style={styles.menuTitle}>深色模式</Text>
-              <Text style={styles.menuSubtitle}>{isDark ? '已开启' : '已关闭'}</Text>
-            </View>
-            <Switch
-              value={isDark}
-              onValueChange={handleThemeToggle}
-              trackColor={{ false: '#E5E7EB', true: '#6366F1' }}
-              thumbColor="#FFFFFF"
-            />
-          </View>
         </View>
 
         {/* Auth Button */}
