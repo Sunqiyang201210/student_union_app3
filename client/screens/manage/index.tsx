@@ -119,7 +119,6 @@ export default function ManageScreen() {
       setFormContent(item.description);
       setFormLocation(item.location);
       setFormStartTime(item.start_time);
-      setFormOrganizer(item.organizer);
     } else if (activeTab === 'matches') {
       setFormLeague(item.league);
       setFormHomeTeam(item.home_team);
