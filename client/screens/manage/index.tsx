@@ -185,8 +185,15 @@ export default function ManageScreen() {
           : `${baseUrl}/api/v1/activities`;
         body = { title: formTitle, description: formContent, location: formLocation, start_time: formStartTime, organizer: formOrganizer };
       } else if (activeTab === 'matches') {
+        // 未开始时不需要比分
+        const isScheduled = formMatchStatus === 'scheduled';
         if (!formHomeTeam || !formAwayTeam || !formStartTime) {
           Toast.show({ type: 'error', text1: '请填写完整信息' });
+          setLoading(false);
+          return;
+        }
+        if (isScheduled && (!formHomeScore || !formAwayScore)) {
+          Toast.show({ type: 'error', text1: '请填写比分' });
           setLoading(false);
           return;
         }
