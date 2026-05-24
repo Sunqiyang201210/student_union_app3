@@ -23,7 +23,7 @@ export default function ScheduleScreen() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedLeague, setSelectedLeague] = useState(league || '校足球联赛');
+  const [selectedLeague, setSelectedLeague] = useState(league || '足球联赛');
 
   const fetchMatches = async (retries = 3) => {
     try {
@@ -193,8 +193,8 @@ export default function ScheduleScreen() {
       
       {/* League Tabs */}
       <View style={styles.tabContainer}>
-        <LeagueTab name="校足球联赛" active={selectedLeague === '校足球联赛'} />
-        <LeagueTab name="校篮球联赛" active={selectedLeague === '校篮球联赛'} />
+        <LeagueTab name="足球联赛" active={selectedLeague === '足球联赛'} />
+        <LeagueTab name="篮球联赛" active={selectedLeague === '篮球联赛'} />
       </View>
       
       <ScrollView 
