@@ -5,7 +5,7 @@ import { useFocusEffect } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { FontAwesome6 } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker from '@/components/DateTimePicker';
 
 type TabType = 'notifications' | 'activities' | 'matches';
 
