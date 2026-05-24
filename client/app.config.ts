@@ -74,7 +74,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
           "icon": "./assets/images/icon.png",
           "color": "#4F46E5"
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true

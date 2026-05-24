@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, RefreshControl, Alert, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, RefreshControl, Alert, Modal, Platform } from 'react-native';
 import { Screen } from '@/components/Screen';
 import { useFocusEffect } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { FontAwesome6 } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 type TabType = 'notifications' | 'activities' | 'matches';
 
@@ -64,9 +65,62 @@ export default function ManageScreen() {
   const [formHomeScore, setFormHomeScore] = useState('');
   const [formAwayScore, setFormAwayScore] = useState('');
   const [formMatchStatus, setFormMatchStatus] = useState('scheduled');
+  
+  // DateTimePicker 相关状态
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [tempDate, setTempDate] = useState(new Date());
 
   const getBaseUrl = () => process.env.EXPO_PUBLIC_BACKEND_BASE_URL || 
   (typeof window !== 'undefined' ? `http://${window.location.hostname}:9091` : 'http://localhost:9091');
+
+  // 格式化日期时间
+  const formatDateTime = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}:00`;
+  };
+
+  // 格式化显示
+  const formatDisplayDate = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const formatDisplayTime = (date: Date) => {
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+  };
+
+  // 处理日期选择
+  const handleDateChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+    }
+    if (selectedDate) {
+      setTempDate(selectedDate);
+      if (Platform.OS === 'android') {
+        setShowTimePicker(true);
+      }
+    }
+  };
+
+  // 处理时间选择
+  const handleTimeChange = (event: any, selectedDate?: Date) => {
+    setShowTimePicker(false);
+    if (selectedDate) {
+      const newDate = new Date(tempDate);
+      newDate.setHours(selectedDate.getHours());
+      newDate.setMinutes(selectedDate.getMinutes());
+      setFormStartTime(formatDateTime(newDate));
+    }
+  };
 
   const fetchData = async () => {
     const baseUrl = getBaseUrl();
@@ -139,6 +193,7 @@ export default function ManageScreen() {
     setFormPriority('normal');
     setFormLocation('');
     setFormStartTime('');
+    setTempDate(new Date());
     setFormLeague('足球联赛');
     setFormHomeTeam('');
     setFormAwayTeam('');
@@ -542,13 +597,24 @@ export default function ManageScreen() {
                     />
                   </View>
                   <View style={styles.formGroup}>
-                    <Text style={styles.formLabel}>开始时间 (格式: 2024-12-20 18:00:00)</Text>
-                    <TextInput
-                      style={styles.formInput}
-                      placeholder="2024-12-20 18:00:00"
-                      value={formStartTime}
-                      onChangeText={setFormStartTime}
-                    />
+                    <Text style={styles.formLabel}>开始时间</Text>
+                    <TouchableOpacity style={styles.formInput} onPress={() => setShowDatePicker(true)}>
+                      <Text>{formStartTime || '请选择日期和时间'}</Text>
+                    </TouchableOpacity>
+                    {showDatePicker && (
+                      <DateTimePicker
+                        value={tempDate}
+                        mode="datetime"
+                        display="default"
+                        onChange={(event, date) => {
+                          setShowDatePicker(false);
+                          if (date) {
+                            setTempDate(date);
+                            setFormStartTime(formatDateTime(date));
+                          }
+                        }}
+                      />
+                    )}
                   </View>
                 </>
               )}
@@ -636,13 +702,24 @@ export default function ManageScreen() {
                     </View>
                   </View>
                   <View style={styles.formGroup}>
-                    <Text style={styles.formLabel}>比赛时间 (格式: 2024-12-20 18:00:00)</Text>
-                    <TextInput
-                      style={styles.formInput}
-                      placeholder="2024-12-20 18:00:00"
-                      value={formStartTime}
-                      onChangeText={setFormStartTime}
-                    />
+                    <Text style={styles.formLabel}>比赛时间</Text>
+                    <TouchableOpacity style={styles.formInput} onPress={() => setShowDatePicker(true)}>
+                      <Text>{formStartTime || '请选择日期和时间'}</Text>
+                    </TouchableOpacity>
+                    {showDatePicker && (
+                      <DateTimePicker
+                        value={tempDate}
+                        mode="datetime"
+                        display="default"
+                        onChange={(event, date) => {
+                          setShowDatePicker(false);
+                          if (date) {
+                            setTempDate(date);
+                            setFormStartTime(formatDateTime(date));
+                          }
+                        }}
+                      />
+                    )}
                   </View>
                   <View style={styles.formGroup}>
                     <Text style={styles.formLabel}>场地</Text>
