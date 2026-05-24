@@ -196,16 +196,16 @@ export default function ManageScreen() {
         console.log('formAwayScore:', formAwayScore);
         console.log('formMatchStatus:', formMatchStatus);
         
-        // 未开始时不需要比分
-        const isScheduled = formMatchStatus === 'scheduled';
-        console.log('isScheduled:', isScheduled);
+        // 未开始时不需要比分，只有进行中或已结束才需要
+        const needsScore = formMatchStatus !== 'scheduled';
+        console.log('needsScore:', needsScore);
         
         if (!formHomeTeam || !formAwayTeam || !formStartTime) {
           Toast.show({ type: 'error', text1: '请填写完整信息', text2: `队伍1:${formHomeTeam} 队伍2:${formAwayTeam}` });
           setLoading(false);
           return;
         }
-        if (isScheduled && (!formHomeScore || !formAwayScore)) {
+        if (needsScore && (!formHomeScore || !formAwayScore)) {
           Toast.show({ type: 'error', text1: '请填写比分', text2: `主队得分:${formHomeScore} 客队得分:${formAwayScore}` });
           setLoading(false);
           return;
