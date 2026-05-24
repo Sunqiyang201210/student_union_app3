@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import { Screen } from '@/components/Screen';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, Link } from 'expo-router';
 import { FontAwesome6 } from '@expo/vector-icons';
 
 interface Match {
@@ -161,9 +161,9 @@ export default function ScheduleScreen() {
     <Screen>
       <View style={styles.header}>
         <View style={styles.headerTop}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Link href="/" style={styles.backButton}>
             <FontAwesome6 name="arrow-left" size={20} color="#2D3436" />
-          </TouchableOpacity>
+          </Link>
           <Text style={styles.headerTitle}>赛程安排</Text>
         </View>
         <Text style={styles.headerSubtitle}>{selectedLeague}</Text>
