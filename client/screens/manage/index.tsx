@@ -565,6 +565,25 @@ export default function ManageScreen() {
                   </View>
 
                   <View style={styles.formGroup}>
+                    <Text style={styles.formLabel}>队伍1</Text>
+                    <TextInput
+                      style={styles.formInput}
+                      placeholder="请输入队伍1名称"
+                      value={formHomeTeam}
+                      onChangeText={setFormHomeTeam}
+                    />
+                  </View>
+                  <View style={styles.formGroup}>
+                    <Text style={styles.formLabel}>队伍2</Text>
+                    <TextInput
+                      style={styles.formInput}
+                      placeholder="请输入队伍2名称"
+                      value={formAwayTeam}
+                      onChangeText={setFormAwayTeam}
+                    />
+                  </View>
+
+                  <View style={styles.formGroup}>
                     <Text style={styles.formLabel}>主队得分</Text>
                     <TextInput
                       style={styles.formInput}
