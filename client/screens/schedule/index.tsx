@@ -27,18 +27,9 @@ export default function ScheduleScreen() {
 
   const fetchMatches = async (retries = 3) => {
     try {
-      // 使用环境变量配置的后端地址
       const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL || 'http://localhost:9091';
-      console.log('Fetching matches from:', baseUrl);
-      
-      // localtunnel bypass header
-      const headers: Record<string, string> = {};
-      if (baseUrl.includes('loca.lt')) {
-        headers['bypass-tunnel-reminder'] = 'true';
-      }
       
       const response = await fetch(`${baseUrl}/api/v1/matches?league=${encodeURIComponent(selectedLeague)}`, {
-        headers,
         signal: AbortSignal.timeout(5000),
       });
       
@@ -53,7 +44,6 @@ export default function ScheduleScreen() {
         await new Promise(r => setTimeout(r, 500));
         return fetchMatches(retries - 1);
       }
-      console.log('Failed to fetch matches');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -70,6 +60,7 @@ export default function ScheduleScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      setLoading(true);
       fetchMatches();
     }, [selectedLeague])
   );
@@ -94,6 +85,20 @@ export default function ScheduleScreen() {
     };
   };
 
+  // 判断比赛状态
+  const getMatchStatus = (item: Match) => {
+    const now = new Date();
+    const matchTime = new Date(item.match_time);
+    
+    if (item.status === 'finished') {
+      return { text: '已结束', color: '#B2BEC3', bgColor: 'rgba(178, 190, 195, 0.12)' };
+    } else if (now >= matchTime && item.status === 'live') {
+      return { text: '进行中', color: '#FF6B6B', bgColor: 'rgba(255, 107, 107, 0.12)' };
+    } else {
+      return { text: '未开始', color: '#6C63FF', bgColor: 'rgba(108, 99, 255, 0.12)' };
+    }
+  };
+
   const getLeagueIcon = (league: string) => {
     return league.includes('篮球') ? 'basketball' : 'football';
   };
@@ -104,61 +109,45 @@ export default function ScheduleScreen() {
 
   const MatchCard = ({ item }: { item: Match }) => {
     const { date, weekday, time } = formatDateTime(item.match_time);
-    const isFinished = item.status === 'finished';
     const leagueColor = getLeagueColor(item.league);
+    const status = getMatchStatus(item);
+    
+    // 比分
+    const homeScore = item.home_score ?? '-';
+    const awayScore = item.away_score ?? '-';
     
     return (
       <View style={styles.cardOuter}>
         <View style={styles.cardInner}>
-          {/* Date Header */}
-          <View style={styles.dateHeader}>
-            <Text style={styles.dateText}>{date}</Text>
-            <Text style={styles.weekdayText}>{weekday}</Text>
-            <Text style={styles.timeText}>{time}</Text>
-          </View>
-          
-          {/* Teams */}
-          <View style={styles.matchContainer}>
-            <View style={styles.team}>
-              <View style={[styles.teamBadge, { backgroundColor: `${leagueColor}1A` }]}>
-                <FontAwesome6 name="shirt" size={20} color={leagueColor} />
-              </View>
-              <Text style={styles.teamName} numberOfLines={1}>{item.home_team}</Text>
+          {/* 顶部：日期 + 状态 */}
+          <View style={styles.topRow}>
+            <View style={styles.dateRow}>
+              <Text style={styles.dateText}>{date}</Text>
+              <Text style={styles.weekdayText}>{weekday}</Text>
+              <Text style={styles.timeText}>{time}</Text>
             </View>
-            
-            <View style={styles.scoreContainer}>
-              {isFinished ? (
-                <>
-                  <Text style={styles.score}>{item.home_score ?? 0}</Text>
-                  <Text style={styles.scoreDivider}>:</Text>
-                  <Text style={styles.score}>{item.away_score ?? 0}</Text>
-                </>
-              ) : (
-                <Text style={styles.vsText}>VS</Text>
-              )}
-            </View>
-            
-            <View style={styles.team}>
-              <View style={[styles.teamBadge, { backgroundColor: `${leagueColor}1A` }]}>
-                <FontAwesome6 name="shirt" size={20} color={leagueColor} />
-              </View>
-              <Text style={styles.teamName} numberOfLines={1}>{item.away_team}</Text>
-            </View>
-          </View>
-          
-          {/* Venue */}
-          <View style={styles.venueContainer}>
-            <FontAwesome6 name="location-dot" size={12} color="#B2BEC3" />
-            <Text style={styles.venueText}>{item.venue}</Text>
-            <View style={[styles.statusBadge, { 
-              backgroundColor: isFinished ? 'rgba(178, 190, 195, 0.12)' : 'rgba(108, 99, 255, 0.12)' 
-            }]}>
-              <Text style={[styles.statusText, { 
-                color: isFinished ? '#B2BEC3' : '#6C63FF' 
-              }]}>
-                {isFinished ? '已结束' : '即将开始'}
+            <View style={[styles.statusBadge, { backgroundColor: status.bgColor }]}>
+              <Text style={[styles.statusText, { color: status.color }]}>
+                {status.text}
               </Text>
             </View>
+          </View>
+          
+          {/* 中间：比分区域 */}
+          <View style={styles.scoreRow}>
+            <Text style={styles.teamNameText}>{item.home_team}</Text>
+            <View style={styles.scoreBox}>
+              <Text style={styles.scoreNum}>{homeScore}</Text>
+              <Text style={styles.scoreColon}>:</Text>
+              <Text style={styles.scoreNum}>{awayScore}</Text>
+            </View>
+            <Text style={styles.teamNameText}>{item.away_team}</Text>
+          </View>
+          
+          {/* 底部：场地 */}
+          <View style={styles.venueRow}>
+            <FontAwesome6 name="location-dot" size={12} color="#B2BEC3" />
+            <Text style={styles.venueText}>{item.venue}</Text>
           </View>
         </View>
       </View>
@@ -197,22 +186,21 @@ export default function ScheduleScreen() {
         <LeagueTab name="篮球联赛" active={selectedLeague === '篮球联赛'} />
       </View>
       
-      <ScrollView 
-        style={styles.container} 
-        contentContainerStyle={styles.contentContainer}
-        showsVerticalScrollIndicator={false}
+      {/* Match List */}
+      <ScrollView
+        style={styles.listContainer}
+        contentContainerStyle={styles.listContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#6C63FF']} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
         {loading ? (
           <View style={styles.emptyContainer}>
-            <FontAwesome6 name="spinner" size={32} color="#B2BEC3" />
             <Text style={styles.emptyText}>加载中...</Text>
           </View>
         ) : matches.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <FontAwesome6 name="calendar-xmark" size={48} color="#B2BEC3" />
+            <FontAwesome6 name="football" size={48} color="#B2BEC3" />
             <Text style={styles.emptyText}>暂无赛程</Text>
           </View>
         ) : (
@@ -220,46 +208,36 @@ export default function ScheduleScreen() {
             <MatchCard key={item.id} item={item} />
           ))
         )}
-        <View style={{ height: 120 }} />
       </ScrollView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F0F0F3',
-  },
-  contentContainer: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 120,
-  },
   header: {
-    backgroundColor: '#F0F0F3',
     paddingHorizontal: 20,
-    paddingTop: 50,
-    paddingBottom: 12,
+    paddingTop: 10,
+    paddingBottom: 16,
+    backgroundColor: '#FFFFFF',
   },
   headerTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 4,
   },
   backButton: {
-    padding: 8,
-    marginRight: 8,
+    marginRight: 12,
+    padding: 4,
   },
   headerTitle: {
-    fontSize: 26,
-    fontWeight: '800',
+    fontSize: 24,
+    fontWeight: '700',
     color: '#2D3436',
   },
   headerSubtitle: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#636E72',
-    marginTop: 4,
+    marginLeft: 36,
   },
   tabContainer: {
     flexDirection: 'row',
@@ -272,10 +250,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
     paddingVertical: 12,
-    borderRadius: 16,
-    backgroundColor: 'rgba(108, 99, 255, 0.12)',
+    paddingHorizontal: 16,
+    backgroundColor: '#F0F0F3',
+    borderRadius: 12,
+    gap: 8,
   },
   tabActive: {
     backgroundColor: '#6C63FF',
@@ -288,116 +267,116 @@ const styles = StyleSheet.create({
   tabTextActive: {
     color: '#FFFFFF',
   },
-  cardOuter: {
-    marginBottom: 16,
+  listContainer: {
+    flex: 1,
   },
-  cardInner: {
-    backgroundColor: '#F0F0F3',
-    borderRadius: 24,
+  listContent: {
     padding: 20,
-    shadowColor: '#D1D9E6',
-    shadowOffset: { width: 6, height: 6 },
-    shadowOpacity: 0.7,
-    shadowRadius: 8,
-    elevation: 6,
-    borderWidth: 0.5,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
-  },
-  dateHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    gap: 8,
-  },
-  dateText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#6C63FF',
-  },
-  weekdayText: {
-    fontSize: 12,
-    color: '#636E72',
-  },
-  timeText: {
-    fontSize: 12,
-    color: '#636E72',
-    marginLeft: 'auto',
-  },
-  matchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  team: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  teamBadge: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  teamName: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#2D3436',
-    textAlign: 'center',
-  },
-  scoreContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-  },
-  score: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#2D3436',
-  },
-  scoreDivider: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#B2BEC3',
-    marginHorizontal: 8,
-  },
-  vsText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#B2BEC3',
-  },
-  venueContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingTop: 12,
-    borderTopWidth: 0.5,
-    borderTopColor: 'rgba(255, 255, 255, 0.5)',
-  },
-  venueText: {
-    fontSize: 12,
-    color: '#636E72',
-    flex: 1,
-  },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 10,
-  },
-  statusText: {
-    fontSize: 11,
-    fontWeight: '600',
+    paddingTop: 0,
+    gap: 16,
   },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 60,
+    gap: 16,
   },
   emptyText: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#B2BEC3',
-    marginTop: 12,
+  },
+  cardOuter: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    shadowColor: '#6C63FF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  cardInner: {
+    gap: 12,
+  },
+  topRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dateText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2D3436',
+  },
+  weekdayText: {
+    fontSize: 12,
+    color: '#636E72',
+    backgroundColor: '#F0F0F3',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  timeText: {
+    fontSize: 14,
+    color: '#636E72',
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  scoreRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    gap: 20,
+  },
+  teamNameText: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2D3436',
+    textAlign: 'center',
+  },
+  scoreBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8F9FA',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 12,
+    gap: 4,
+  },
+  scoreNum: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#2D3436',
+    minWidth: 30,
+    textAlign: 'center',
+  },
+  scoreColon: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#B2BEC3',
+  },
+  venueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  venueText: {
+    fontSize: 12,
+    color: '#B2BEC3',
   },
 });
