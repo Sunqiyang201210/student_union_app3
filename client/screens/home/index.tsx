@@ -97,8 +97,8 @@ export default function HomeScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.greeting}>你好</Text>
-            <Text style={styles.title}>欢迎使用学生会</Text>
+            <Text style={styles.greeting}>欢迎！</Text>
+            <Text style={styles.title}>早七学生会主页</Text>
           </View>
           <View style={styles.avatarContainer}>
             <FontAwesome6 name="graduation-cap" size={24} color="#6C63FF" />
