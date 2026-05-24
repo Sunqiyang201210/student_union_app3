@@ -67,6 +67,13 @@ export default ({ config }: ConfigContext): ExpoConfig => {
           "microphonePermission": `学生会App需要访问麦克风以录制视频声音。`,
           "recordAudioAndroid": true
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#4F46E5"
+        }
       ]
     ],
     "experiments": {

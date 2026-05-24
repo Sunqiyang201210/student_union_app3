@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { registerDeviceForPush } from '@/services/pushNotification';
 
 interface User {
   username: string;
@@ -52,6 +53,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await AsyncStorage.removeItem(USER_KEY);
         }
       }
+      
+      // 注册推送通知
+      registerDeviceForPush();
     } catch (e) {
       console.log('Load auth failed:', e);
     } finally {

@@ -64,6 +64,15 @@ async function initDatabase() {
         status VARCHAR(50) DEFAULT 'pending',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+
+      CREATE TABLE IF NOT EXISTS push_tokens (
+        id SERIAL PRIMARY KEY,
+        token VARCHAR(500) UNIQUE NOT NULL,
+        platform VARCHAR(20) DEFAULT 'android',
+        device_name VARCHAR(100),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        last_active TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
     `);
     console.log('数据库表初始化完成');
   } catch (error) {
@@ -413,6 +422,104 @@ app.get('/api/v1/stats', async (req, res) => {
 app.listen(port, '0.0.0.0', () => {
   console.log(`服务器运行在 http://0.0.0.0:${port}`);
   console.log(`使用 Railway PostgreSQL 数据库`);
+});
+
+// ============ 推送通知接口 ============
+
+// 注册设备推送token
+app.post('/api/v1/push/register', async (req, res) => {
+  try {
+    const { token, platform = 'android', deviceName } = req.body;
+    
+    if (!token) {
+      sendResponse(res, null, 'Token不能为空', 400);
+      return;
+    }
+    
+    // 插入或更新token
+    await pool.query(
+      `INSERT INTO push_tokens (token, platform, device_name, last_active) 
+       VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+       ON CONFLICT (token) 
+       DO UPDATE SET last_active = CURRENT_TIMESTAMP, device_name = $3`,
+      [token, platform, deviceName || '']
+    );
+    
+    sendResponse(res, { success: true }, '设备注册成功');
+  } catch (error: any) {
+    console.error('注册设备失败:', error);
+    sendResponse(res, null, error.message, 500);
+  }
+});
+
+// 发送推送通知给所有设备
+async function sendPushNotification(title: string, body: string, data?: Record<string, any>) {
+  try {
+    // 获取所有token
+    const result = await pool.query('SELECT token FROM push_tokens');
+    const tokens = result.rows.map(row => row.token);
+    
+    if (tokens.length === 0) {
+      console.log('没有注册的设备');
+      return { success: true, sent: 0 };
+    }
+    
+    // 发送推送通知
+    const messages = tokens.map(token => ({
+      to: token,
+      title,
+      body,
+      data: data || {},
+      sound: 'default',
+    }));
+    
+    // Expo推送API
+    const response = await fetch('https://exp.host/--/api/v2/push/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(messages),
+    });
+    
+    const result_data = await response.json();
+    console.log('推送结果:', result_data);
+    
+    return { success: true, sent: tokens.length };
+  } catch (error: any) {
+    console.error('发送推送失败:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// 修改创建通知接口，添加推送功能
+const originalCreateNotification = async (req: Request, res: Response) => {
+  try {
+    const { title, content, type = 'general', priority = 'normal' } = req.body;
+    
+    if (!title || !content) {
+      sendResponse(res, null, '标题和内容不能为空', 400);
+      return;
+    }
+    
+    const result = await pool.query(
+      'INSERT INTO notifications (title, content, type, priority) VALUES ($1, $2, $3, $4) RETURNING *',
+      [title, content, type, priority]
+    );
+    
+    // 发送推送通知
+    await sendPushNotification(title, content, { type: 'notification', id: result.rows[0].id });
+    
+    sendResponse(res, result.rows[0], '创建成功');
+  } catch (error: any) {
+    console.error('创建通知失败:', error);
+    sendResponse(res, null, error.message, 500);
+  }
+};
+
+// 覆盖原来的创建通知接口
+app.post('/api/v1/notifications', async (req, res) => {
+  await originalCreateNotification(req, res);
 });
 
 export default app;
