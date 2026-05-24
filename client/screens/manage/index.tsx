@@ -62,6 +62,9 @@ export default function ManageScreen() {
   const [formHomeTeam, setFormHomeTeam] = useState('');
   const [formAwayTeam, setFormAwayTeam] = useState('');
   const [formVenue, setFormVenue] = useState('');
+  const [formHomeScore, setFormHomeScore] = useState('');
+  const [formAwayScore, setFormAwayScore] = useState('');
+  const [formMatchStatus, setFormMatchStatus] = useState('scheduled');
 
   const getBaseUrl = () => process.env.EXPO_PUBLIC_BACKEND_BASE_URL || 
   (typeof window !== 'undefined' ? `http://${window.location.hostname}:9091` : 'http://localhost:9091');
@@ -124,6 +127,9 @@ export default function ManageScreen() {
       setFormAwayTeam(item.away_team);
       setFormStartTime(item.match_time);
       setFormVenue(item.venue);
+      setFormHomeScore(item.home_score?.toString() || '');
+      setFormAwayScore(item.away_score?.toString() || '');
+      setFormMatchStatus(item.status || 'scheduled');
     }
     setModalVisible(true);
   };
@@ -136,10 +142,13 @@ export default function ManageScreen() {
     setFormLocation('');
     setFormStartTime('');
     setFormOrganizer('');
-    setFormLeague('校足球联赛');
+    setFormLeague('足球联赛');
     setFormHomeTeam('');
     setFormAwayTeam('');
     setFormVenue('');
+    setFormHomeScore('');
+    setFormAwayScore('');
+    setFormMatchStatus('scheduled');
   };
 
   const handleSubmit = async () => {
@@ -184,7 +193,16 @@ export default function ManageScreen() {
         url = editingItem 
           ? `${baseUrl}/api/v1/matches/${editingItem.id}`
           : `${baseUrl}/api/v1/matches`;
-        body = { league: formLeague, home_team: formHomeTeam, away_team: formAwayTeam, match_time: formStartTime, venue: formVenue };
+        body = { 
+          league: formLeague, 
+          home_team: formHomeTeam, 
+          away_team: formAwayTeam, 
+          match_time: formStartTime, 
+          venue: formVenue,
+          home_score: formHomeScore ? parseInt(formHomeScore) : null,
+          away_score: formAwayScore ? parseInt(formAwayScore) : null,
+          status: formMatchStatus
+        };
       }
 
       const response = await fetch(url, {
@@ -532,7 +550,7 @@ export default function ManageScreen() {
                   <View style={styles.formGroup}>
                     <Text style={styles.formLabel}>联赛</Text>
                     <View style={styles.formSelect}>
-                      {['校足球联赛', '校篮球联赛'].map((l) => (
+                      {['足球联赛', '篮球联赛'].map((l) => (
                         <TouchableOpacity
                           key={l}
                           style={[styles.selectOption, formLeague === l && styles.selectOptionActive]}
@@ -562,6 +580,46 @@ export default function ManageScreen() {
                       value={formAwayTeam}
                       onChangeText={setFormAwayTeam}
                     />
+                  </View>
+                  <View style={styles.formGroup}>
+                    <Text style={styles.formLabel}>主队得分</Text>
+                    <TextInput
+                      style={styles.formInput}
+                      placeholder="输入数字，如：2"
+                      value={formHomeScore}
+                      onChangeText={setFormHomeScore}
+                      keyboardType="numeric"
+                    />
+                  </View>
+                  <View style={styles.formGroup}>
+                    <Text style={styles.formLabel}>客队得分</Text>
+                    <TextInput
+                      style={styles.formInput}
+                      placeholder="输入数字，如：1"
+                      value={formAwayScore}
+                      onChangeText={setFormAwayScore}
+                      keyboardType="numeric"
+                    />
+                  </View>
+                  <View style={styles.formGroup}>
+                    <Text style={styles.formLabel}>比赛状态</Text>
+                    <View style={styles.formSelect}>
+                      {[
+                        { value: 'scheduled', label: '未开始' },
+                        { value: 'live', label: '进行中' },
+                        { value: 'finished', label: '已结束' },
+                      ].map((s) => (
+                        <TouchableOpacity
+                          key={s.value}
+                          style={[styles.selectOption, formMatchStatus === s.value && styles.selectOptionActive]}
+                          onPress={() => setFormMatchStatus(s.value)}
+                        >
+                          <Text style={[styles.selectOptionText, formMatchStatus === s.value && styles.selectOptionTextActive]}>
+                            {s.label}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
                   </View>
                   <View style={styles.formGroup}>
                     <Text style={styles.formLabel}>比赛时间 (格式: 2024-12-20 18:00:00)</Text>
