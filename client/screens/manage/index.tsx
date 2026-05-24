@@ -214,59 +214,47 @@ export default function ManageScreen() {
     }
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: number) => {
     if (!token) {
       Toast.show({ type: 'error', text1: '请先登录管理员账号' });
       return;
     }
     
-    Alert.alert('确认删除', '确定要删除这条记录吗？', [
-      { text: '取消', style: 'cancel' },
-      {
-        text: '删除',
-        style: 'destructive',
-        onPress: async () => {
-          const currentToken = token;
-          const baseUrl = getBaseUrl();
-          let endpoint = '';
-          
-          if (activeTab === 'notifications') {
-            endpoint = `/api/v1/notifications/${id}`;
-          } else if (activeTab === 'activities') {
-            endpoint = `/api/v1/activities/${id}`;
-          } else if (activeTab === 'matches') {
-            endpoint = `/api/v1/matches/${id}`;
-          }
-          
-          const url = `${baseUrl}${endpoint}`;
-          
-          try {
-            const response = await fetch(url, {
-              method: 'DELETE',
-              headers: { 
-                'Authorization': `Bearer ${currentToken}`,
-                'Content-Type': 'application/json',
-                'bypass-tunnel-reminder': 'true'
-              },
-            });
-            
-            const data = await response.json();
-            console.log('Delete response:', response.status, data);
-            
-            if (response.ok && data.code === 0) {
-              Toast.show({ type: 'success', text1: '删除成功' });
-              fetchData();
-            } else {
-              const errorMsg = data.message || `HTTP ${response.status}`;
-              Toast.show({ type: 'error', text1: `删除失败: ${errorMsg}` });
-            }
-          } catch (e: any) {
-            console.log('Delete error:', e);
-            Toast.show({ type: 'error', text1: `网络错误: ${e?.message || '请重试'}` });
-          }
+    const currentToken = token;
+    const baseUrl = getBaseUrl();
+    let endpoint = '';
+    
+    if (activeTab === 'notifications') {
+      endpoint = `/api/v1/notifications/${id}`;
+    } else if (activeTab === 'activities') {
+      endpoint = `/api/v1/activities/${id}`;
+    } else if (activeTab === 'matches') {
+      endpoint = `/api/v1/matches/${id}`;
+    }
+    
+    const url = `${baseUrl}${endpoint}`;
+    
+    try {
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers: { 
+          'Authorization': `Bearer ${currentToken}`,
+          'Content-Type': 'application/json',
         },
-      },
-    ]);
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok && data.code === 0) {
+        Toast.show({ type: 'success', text1: '删除成功' });
+        fetchData();
+      } else {
+        const errorMsg = data.message || `HTTP ${response.status}`;
+        Toast.show({ type: 'error', text1: `删除失败: ${errorMsg}` });
+      }
+    } catch (e: any) {
+      Toast.show({ type: 'error', text1: `网络错误: ${e?.message || '请重试'}` });
+    }
   };
 
   const TabButton = ({ tab, label, icon }: { tab: TabType; label: string; icon: string }) => (
