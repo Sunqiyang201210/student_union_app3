@@ -57,7 +57,6 @@ export default function ManageScreen() {
   const [formPriority, setFormPriority] = useState('normal');
   const [formLocation, setFormLocation] = useState('');
   const [formStartTime, setFormStartTime] = useState('');
-  const [formOrganizer, setFormOrganizer] = useState('');
   const [formLeague, setFormLeague] = useState('足球联赛');
   const [formHomeTeam, setFormHomeTeam] = useState('');
   const [formAwayTeam, setFormAwayTeam] = useState('');
@@ -141,7 +140,6 @@ export default function ManageScreen() {
     setFormPriority('normal');
     setFormLocation('');
     setFormStartTime('');
-    setFormOrganizer('');
     setFormLeague('足球联赛');
     setFormHomeTeam('');
     setFormAwayTeam('');
@@ -183,7 +181,7 @@ export default function ManageScreen() {
         url = editingItem 
           ? `${baseUrl}/api/v1/activities/${editingItem.id}`
           : `${baseUrl}/api/v1/activities`;
-        body = { title: formTitle, description: formContent, location: formLocation, start_time: formStartTime, organizer: formOrganizer };
+        body = { title: formTitle, description: formContent, location: formLocation, start_time: formStartTime };
       } else if (activeTab === 'matches') {
         // 调试信息
         console.log('=== 赛程表单调试 ===');
@@ -551,15 +549,6 @@ export default function ManageScreen() {
                       placeholder="2024-12-20 18:00:00"
                       value={formStartTime}
                       onChangeText={setFormStartTime}
-                    />
-                  </View>
-                  <View style={styles.formGroup}>
-                    <Text style={styles.formLabel}>主办方</Text>
-                    <TextInput
-                      style={styles.formInput}
-                      placeholder="请输入主办方"
-                      value={formOrganizer}
-                      onChangeText={setFormOrganizer}
                     />
                   </View>
                 </>
