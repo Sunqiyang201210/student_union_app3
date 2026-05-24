@@ -58,7 +58,7 @@ export default function ManageScreen() {
   const [formLocation, setFormLocation] = useState('');
   const [formStartTime, setFormStartTime] = useState('');
   const [formOrganizer, setFormOrganizer] = useState('');
-  const [formLeague, setFormLeague] = useState('校足球联赛');
+  const [formLeague, setFormLeague] = useState('足球联赛');
   const [formHomeTeam, setFormHomeTeam] = useState('');
   const [formAwayTeam, setFormAwayTeam] = useState('');
   const [formVenue, setFormVenue] = useState('');
