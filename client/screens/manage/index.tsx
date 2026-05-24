@@ -606,7 +606,7 @@ export default function ManageScreen() {
                         value={tempDate}
                         mode="datetime"
                         display="default"
-                        onChange={(event, date) => {
+                        onChange={(_event: any, date?: Date) => {
                           setShowDatePicker(false);
                           if (date) {
                             setTempDate(date);
@@ -711,7 +711,7 @@ export default function ManageScreen() {
                         value={tempDate}
                         mode="datetime"
                         display="default"
-                        onChange={(event, date) => {
+                        onChange={(_event: any, date?: Date) => {
                           setShowDatePicker(false);
                           if (date) {
                             setTempDate(date);
