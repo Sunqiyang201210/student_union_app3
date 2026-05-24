@@ -2,7 +2,6 @@ import { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
 import { Screen } from '@/components/Screen';
 import { useFocusEffect } from 'expo-router';
-import { useSafeRouter, useSafeSearchParams } from '@/hooks/useSafeRouter';
 import { FontAwesome6 } from '@expo/vector-icons';
 
 interface Match {
@@ -18,14 +17,12 @@ interface Match {
 }
 
 export default function ScheduleScreen() {
-  const router = useSafeRouter();
-  const { league } = useSafeSearchParams<{ league?: string }>();
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedLeague, setSelectedLeague] = useState(league || '足球联赛');
+  const [selectedLeague, setSelectedLeague] = useState('足球联赛');
 
-  const fetchMatches = async (retries = 3) => {
+  const fetchMatches = useCallback(async (retries = 3) => {
     try {
       const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL || 'http://localhost:9091';
       
@@ -48,21 +45,13 @@ export default function ScheduleScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  };
-
-  useFocusEffect(
-    useCallback(() => {
-      if (league) {
-        setSelectedLeague(league);
-      }
-    }, [league])
-  );
+  }, [selectedLeague]);
 
   useFocusEffect(
     useCallback(() => {
       setLoading(true);
       fetchMatches();
-    }, [selectedLeague])
+    }, [fetchMatches])
   );
 
   const onRefresh = () => {
