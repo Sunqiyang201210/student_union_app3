@@ -104,7 +104,6 @@ export default function LoginScreen() {
             {/* Demo Account */}
             <View style={styles.demoHint}>
               <Text style={styles.demoText}>测试账号: admin</Text>
-              <Text style={styles.demoText}>密码: admin123</Text>
             </View>
           </View>
 
