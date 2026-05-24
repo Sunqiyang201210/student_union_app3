@@ -196,7 +196,7 @@ export default function ProfileScreen() {
           </View>
           <View style={styles.aboutRow}>
             <Text style={styles.aboutLabel}>开发者</Text>
-            <Text style={styles.aboutValue}>学生会技术部</Text>
+            <Text style={styles.aboutValue}>早培学生会</Text>
           </View>
         </View>
 
