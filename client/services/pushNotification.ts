@@ -8,7 +8,7 @@ Notifications.setNotificationHandler({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
-  }),
+  } as Notifications.NotificationBehavior),
 });
 
 const EXPO_PUSH_URL = process.env.EXPO_PUBLIC_BACKEND_BASE_URL || 'http://localhost:9091';
@@ -44,9 +44,15 @@ export async function requestNotificationPermissions(): Promise<boolean> {
 export async function getPushNotificationToken(): Promise<string | null> {
   try {
     // 获取Expo推送token
+    const projectId = process.env.EXPO_PUBLIC_COZE_PROJECT_ID;
+    if (!projectId) {
+      console.log('未配置EXPO_PUBLIC_COZE_PROJECT_ID，跳过获取推送token');
+      return null;
+    }
+    
     const tokenData = await Notifications.getExpoPushTokenAsync({
-      projectId: process.env.EXPO_PUBLIC_COZE_PROJECT_ID,
-    });
+      projectId: projectId,
+    }) as { data: string };
     
     console.log('Push token:', tokenData.data);
     return tokenData.data;

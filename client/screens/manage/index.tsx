@@ -606,12 +606,10 @@ export default function ManageScreen() {
                         value={tempDate}
                         mode="datetime"
                         display="default"
-                        onChange={(_event: any, date?: Date) => {
+                        onChange={(date: Date) => {
                           setShowDatePicker(false);
-                          if (date) {
-                            setTempDate(date);
-                            setFormStartTime(formatDateTime(date));
-                          }
+                          setTempDate(date);
+                          setFormStartTime(formatDateTime(date));
                         }}
                       />
                     )}

@@ -1,18 +1,24 @@
 import React, { useState } from 'react';
-import { View, TextInput, TouchableOpacity, Text, StyleSheet, Modal, Platform } from 'react-native';
+import { View, TextInput, TouchableOpacity, Text, StyleSheet, Platform, Modal } from 'react-native';
 import DateTimePickerLib from '@react-native-community/datetimepicker';
 
 // 简单日期时间选择器组件
-// Web上使用TextInput，原生平台使用DateTimePicker
+// Web上使用Modal+TextInput，原生平台使用DateTimePicker
+interface DateTimePickerProps {
+  value: Date;
+  onChange: (date: Date) => void;
+  placeholder?: string;
+  mode?: 'date' | 'time' | 'datetime';
+  display?: 'default' | 'spinner' | 'calendar' | 'clock';
+}
+
 export default function DateTimePickerComponent({
   value,
   onChange,
   placeholder = '选择日期和时间',
-}: {
-  value: Date;
-  onChange: (date: Date) => void;
-  placeholder?: string;
-}) {
+  mode = 'datetime',
+  display = 'default',
+}: DateTimePickerProps) {
   const [showWebPicker, setShowWebPicker] = useState(false);
   const [webDate, setWebDate] = useState('');
   const [webTime, setWebTime] = useState('');
@@ -97,8 +103,8 @@ export default function DateTimePickerComponent({
   return (
     <DateTimePicker
       value={value}
-      mode="datetime"
-      display="default"
+      mode={mode}
+      display={display}
       onChange={(event: any, selectedDate?: Date) => {
         if (selectedDate) {
           onChange(selectedDate);
